@@ -1,2 +1,2 @@
 # GPLime_dict
-Directory for GPLime
+Directory of dictionary for GPLime

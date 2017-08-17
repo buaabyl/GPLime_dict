@@ -283,7 +283,7 @@ if __name__ == '__main__':
     f = open('debug.log', 'w', encoding='UTF-8')
     for db_sub in db:
         for k, v in db_sub.items():
-            f.write('%-10.0f %s\n' % (v, k))
+            f.write('%-10.0f |%s\n' % (v, k))
     f.close()
 
 

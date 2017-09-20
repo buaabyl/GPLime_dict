@@ -282,8 +282,15 @@ if __name__ == '__main__':
     # debug
     f = open('debug.log', 'w', encoding='UTF-8')
     for db_sub in db:
-        for k, v in db_sub.items():
-            f.write('%-10.0f |%s\n' % (v, k))
+        for k, freq in db_sub.items():
+            f.write('%-10.0f |%s\n' % (freq, k))
+    f.close()
+
+    f = open('jieba.dict', 'w', encoding='UTF-8')
+    for db_sub in db:
+        for k, freq in db_sub.items():
+            chs = k.split('|')[1]
+            f.write('%s %.0f\n' % (chs, freq))
     f.close()
 
 

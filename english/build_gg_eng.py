@@ -102,10 +102,6 @@ if __name__ == '__main__':
                 m[word].append(word)
             continue
 
-        for word in words:
-            for i in range
-
-
 
     #fn = '%s.db' % (os.path.splitext(sys.argv[1])[0])
     #if os.path.exists(fn):

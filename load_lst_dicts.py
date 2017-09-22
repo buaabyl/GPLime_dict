@@ -130,6 +130,30 @@ def init():
                 raise 'Duplicate!'
             PINYIN_MAP[pinyin] = (consonant, vowel)
 
+def file_put_cache(fn, d):
+    f = open(fn, 'wb')
+    pickle.dump(d, f)
+    f.close()
+
+def file_get_cache(fn):
+    f = open(fn, 'rb')
+    d = pickle.load(f)
+    f.close()
+    return d
+
+def file_put_json(fn, d):
+    jstr = json.dumps(d, indent=4)
+    f = open(fn, 'w', encoding='utf-8')
+    f.write(jstr)
+    f.close()
+
+def file_get_json(dbname):
+    f = open(dbname, 'r', encoding='utf-8')
+    jstr = f.read()
+    f.close()
+    db = json.loads(jstr)
+    return db
+
 
 def load_lst_file(fn):
     f = open(fn, 'r', encoding='UTF-8')
@@ -226,6 +250,11 @@ def load_lst_files(lst_files):
     return pinyin_dbs
 
 
+# return a list, form size [0,32)
+# every item in list is map
+#
+# map.key  := piny'in1,piny'in2|word
+# map.value:= frequency
 def merge_pinyins(pinyin_dbs):
     dbs_by_length = []
     for i in range(32):
@@ -263,35 +292,115 @@ def merge_pinyins(pinyin_dbs):
 if __name__ == '__main__':
     init()
 
-    lst_files = []
-    if len(sys.argv) > 1:
-        lst_files.extend(sys.argv[1:])
+    CACHE = 'dict.cache'
+    if os.path.isfile(CACHE):
+        print('loading cache:', CACHE)
+        f = open(CACHE, 'rb')
+        d = f.read()
+        f.close()
+        db = pickle.loads(d)
+        del d
+
     else:
-        for prefix, dirs, files in os.walk('.'):
-            for fn in files:
-                if os.path.splitext(fn)[1].lower() == '.lst':
-                    lst_files.append(os.path.join(prefix, fn))
+        lst_files = []
+        if len(sys.argv) > 1:
+            lst_files.extend(sys.argv[1:])
+        else:
+            for prefix, dirs, files in os.walk('.'):
+                for fn in files:
+                    if os.path.splitext(fn)[1].lower() == '.lst':
+                        lst_files.append(os.path.join(prefix, fn))
 
-    pinyin_dbs = load_lst_files(lst_files)
-    gc.collect()
+        pinyin_dbs = load_lst_files(lst_files)
 
-    db = merge_pinyins(pinyin_dbs)
-    pinyin_dbs = None
-    gc.collect()
+        db = merge_pinyins(pinyin_dbs)
+        pinyin_dbs = None
+        gc.collect(2)
+
+        d = pickle.dumps(db)
+        f = open(CACHE, 'wb')
+        f.write(d)
+        f.close()
+
+        del d
+
+    gc.collect(2)
 
     # debug
-    f = open('debug.log', 'w', encoding='UTF-8')
+    total_words = 0
+    for db_sub in db:
+        total_words = total_words + len(db_sub)
+
+    #print('write to debug.log')
+    #f = open('debug.log', 'w', encoding='UTF-8')
+    #i = 1
+    #for db_sub in db:
+    #    for k, freq in db_sub.items():
+    #        sys.stdout.write('%.3f%%\r' % (100 * i / total_words))
+    #        i = i + 1
+    #        f.write('%-10.0f |%s\n' % (freq, k))
+    #f.close()
+    #print('\n')
+
+
+    #print('write to jieba.dict')
+    #f = open('jieba.dict', 'w', encoding='UTF-8')
+    #i = 1
+    #for db_sub in db:
+    #    for k, freq in db_sub.items():
+    #        sys.stdout.write('%.3f%%\r' % (100 * i / total_words))
+    #        i = i + 1
+    #        chs = k.split('|')[1]
+    #        f.write('%s %.0f\n' % (chs, freq))
+    #f.close()
+    #print('\n')
+
+    # TODO: handle multi announcement......
+    WORD2PINYIN = {}
+    progress = 1
     for db_sub in db:
         for k, freq in db_sub.items():
-            f.write('%-10.0f |%s\n' % (freq, k))
+            progress = progress + 1
+            sys.stdout.write('%.3f%%\r' % (100 * progress / total_words))
+
+            full_pinyin, word = k.split('|')
+            lst_pinyin = full_pinyin.split(',')
+
+            #we got this: lst_pinyin, word, freq
+            n0 = len(word)
+            n1 = len(lst_pinyin)
+            if n0 != n1:
+                print('Warning: ')
+                print(lst_pinyin)
+                print(word)
+                continue
+
+            if word not in WORD2PINYIN:
+                WORD2PINYIN[word] = [full_pinyin]
+
+            i = 0
+            while i < n0:
+                ucs2char = word[i]
+                pinyin   = lst_pinyin[i]
+
+                if ucs2char not in WORD2PINYIN:
+                    WORD2PINYIN[ucs2char] = [pinyin]
+                else:
+                    p = WORD2PINYIN[ucs2char]
+                    if pinyin not in p:
+                        p.append(pinyin)
+
+                i = i + 1
+
+    #file_put_json('pinyin_rlookup.json', WORD2PINYIN)
+
+    fn = 'PINYIN_RLOOKUP.cache'
+    print('write to:', fn)
+    d = pickle.dumps(WORD2PINYIN)
+    f = open(fn, 'wb')
+    f.write(d)
     f.close()
 
-    f = open('jieba.dict', 'w', encoding='UTF-8')
-    for db_sub in db:
-        for k, freq in db_sub.items():
-            chs = k.split('|')[1]
-            f.write('%s %.0f\n' % (chs, freq))
-    f.close()
 
 
 

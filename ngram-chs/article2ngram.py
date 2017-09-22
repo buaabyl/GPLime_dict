@@ -114,7 +114,11 @@ if __name__ == '__main__':
     for k,v in unigram.items():
         l.append((k, v))
     l = sorted(l, key=lambda v:v[1], reverse=True)
+    del unigram
+    gc.collect(2)
     file_put_json('unigram.json', l)
+    del l
+    gc.collect(2)
     print('wrote to unigram.json')
 
 
@@ -124,41 +128,50 @@ if __name__ == '__main__':
         first, second = k.split(' ')
         l.append((first, second, v))
     l = sorted(l, key=lambda v:v[2], reverse=True)
+    del bigram
+    gc.collect(2)
     file_put_json('bigram.json', l)
+    del l
+    gc.collect(2)
     print('wrote to bigram.json')
 
-    gc.collect(2)
 
     dbname = 'ngram_chs.db'
     print('write to', dbname) 
     if os.path.exists(dbname):
         os.remove(dbname)
-    total_unigram = 0
-    total_bigram  = 0
-    unigram = file_get_json('unigram.json')
-    bigram  = file_get_json('bigram.json')
-    for key, cnt in unigram:
-        total_unigram = total_unigram + cnt
-    for first, second, cnt in bigram:
-        total_bigram = total_bigram + cnt
-    print('total count:')
-    print(' unigram =', total_unigram)
-    print(' bigram  =', total_bigram)
-
     db = sqlite3.connect(dbname)
     cur = db.cursor()
     cur.execute('CREATE TABLE unigram(phrase TEXT, freq REAL)')
     cur.execute('CREATE TABLE bigram(phrase0 TEXT, phrase1 TEXT, freq REAL)')
 
+
+    total_unigram = 0
+    unigram = file_get_json('unigram.json')
+    for key, cnt in unigram:
+        total_unigram = total_unigram + cnt
     print('insert unigram into sqlite3 db')
+    print(' unigram =', total_unigram)
     for k, v in unigram:
         entropy = -math.log(v/total_unigram)
         cur.execute('INSERT INTO unigram(phrase, freq) VALUES(?, ?)', (k, entropy))
+    del unigram
+    gc.collect(2)
+
+
+    total_bigram  = 0
+    bigram  = file_get_json('bigram.json')
+    for first, second, cnt in bigram:
+        total_bigram = total_bigram + cnt
 
     print('insert bigram into sqlite3 db')
+    print(' bigram  =', total_bigram)
     for k1, k2, v in bigram:
         entropy = -math.log(v/total_bigram)
         cur.execute('INSERT INTO bigram(phrase0, phrase1, freq) VALUES(?, ?, ?)', (k1, k2, entropy))
+    del bigram
+    gc.collect(2)
+
 
     db.commit()
 

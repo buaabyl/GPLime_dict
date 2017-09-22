@@ -75,6 +75,42 @@ def strip_nonenglish(s):
 
     return ''.join(l)
 
+def write_unigram_bigram_to_sqlite3(dbname, unigram, bigram):
+    print('db:', dbname) 
+    if os.path.exists(dbname):
+        os.remove(dbname)
+    total_unigram = 0
+    total_bigram  = 0
+    for key, cnt in unigram:
+        total_unigram = total_unigram + cnt
+    for first, second, cnt in bigram:
+        total_bigram = total_bigram + cnt
+    print('total count:')
+    print(' unigram =', total_unigram)
+    print(' bigram  =', total_bigram)
+
+    db = sqlite3.connect(dbname)
+    cur = db.cursor()
+    cur.execute('CREATE TABLE unigram(phrase TEXT, freq REAL)')
+    cur.execute('CREATE TABLE bigram(phrase0 TEXT, phrase1 TEXT, freq REAL)')
+
+    print('insert unigram into sqlite3 db')
+    for k, v in unigram:
+        entropy = -math.log(v/total_unigram)
+        cur.execute('INSERT INTO unigram(phrase, freq) VALUES(?, ?)', (k, entropy))
+
+    print('insert bigram into sqlite3 db')
+    for k1, k2, v in bigram:
+        entropy = -math.log(v/total_bigram)
+        cur.execute('INSERT INTO bigram(phrase0, phrase1, freq) VALUES(?, ?, ?)', (k1, k2, entropy))
+
+    db.commit()
+
+    print('create index')
+    cur.execute('CREATE INDEX index_bigram ON bigram(phrase0, phrase1)')
+    db.commit()
+
+
 if __name__ == '__main__':
     f = open('bbc_dump.json', 'r', encoding='utf-8')
     jstr = f.read()
@@ -139,42 +175,9 @@ if __name__ == '__main__':
     print('wrote to bigram.json')
 
 
-    dbname = 'ngram_enu.db'
-    print('wrote to', dbname) 
-    if os.path.exists(dbname):
-        os.remove(dbname)
-    total_unigram = 0
-    total_bigram  = 0
     unigram = file_get_json('unigram.json')
     bigram  = file_get_json('bigram.json')
-    for key, cnt in unigram:
-        total_unigram = total_unigram + cnt
-    for first, second, cnt in bigram:
-        total_bigram = total_bigram + cnt
-    print('total count:')
-    print(' unigram =', total_unigram)
-    print(' bigram  =', total_bigram)
-
-    db = sqlite3.connect(dbname)
-    cur = db.cursor()
-    cur.execute('CREATE TABLE unigram(phrase TEXT, freq REAL)')
-    cur.execute('CREATE TABLE bigram(phrase0 TEXT, phrase1 TEXT, freq REAL)')
-
-    print('insert unigram into sqlite3 db')
-    for k, v in unigram:
-        entropy = -math.log(v/total_unigram)
-        cur.execute('INSERT INTO unigram(phrase, freq) VALUES(?, ?)', (k, entropy))
-
-    print('insert bigram into sqlite3 db')
-    for k1, k2, v in bigram:
-        entropy = -math.log(v/total_bigram)
-        cur.execute('INSERT INTO bigram(phrase0, phrase1, freq) VALUES(?, ?, ?)', (k1, k2, entropy))
-
-    db.commit()
-
-    print('create index')
-    cur.execute('CREATE INDEX index_bigram ON bigram(phrase0, phrase1)')
-    db.commit()
+    write_unigram_bigram_to_sqlite3('ngram_enu.db', unigram, bigram)
 
     
 

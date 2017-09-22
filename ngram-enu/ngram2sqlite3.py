@@ -64,18 +64,18 @@ def write_unigram_bigram_to_sqlite3(dbname, unigram, bigram):
 
     db = sqlite3.connect(dbname)
     cur = db.cursor()
-    cur.execute('CREATE TABLE unigram(phrase TEXT, freq REAL)')
-    cur.execute('CREATE TABLE bigram(phrase0 TEXT, phrase1 TEXT, freq REAL)')
+    cur.execute('CREATE TABLE unigram(phrase TEXT, logp REAL)')
+    cur.execute('CREATE TABLE bigram(phrase0 TEXT, phrase1 TEXT, logp REAL)')
 
     print('insert unigram into sqlite3 db')
     for k, v in unigram:
-        entropy = -math.log(v/total_unigram)
-        cur.execute('INSERT INTO unigram(phrase, freq) VALUES(?, ?)', (k, entropy))
+        logp = -math.log(v/total_unigram)
+        cur.execute('INSERT INTO unigram(phrase, logp) VALUES(?, ?)', (k, logp))
 
     print('insert bigram into sqlite3 db')
     for k1, k2, v in bigram:
-        entropy = -math.log(v/total_bigram)
-        cur.execute('INSERT INTO bigram(phrase0, phrase1, freq) VALUES(?, ?, ?)', (k1, k2, entropy))
+        logp = -math.log(v/total_bigram)
+        cur.execute('INSERT INTO bigram(phrase0, phrase1, logp) VALUES(?, ?, ?)', (k1, k2, logp))
 
     db.commit()
 
@@ -107,7 +107,7 @@ def load_google_english_list(fn):
 if __name__ == '__main__':
     GOOGLE_ENGLISH_DATAFILE = 'google_english.txt'
     NGRAM_ORIGINAL_DB       = ['unigram.json', 'bigram.json']
-    NGRAM_MERGED_DB         = 'ngram_full_enu.db'
+    NGRAM_MERGED_DB         = 'ngram_enu.db'
     if not os.path.isfile(GOOGLE_ENGLISH_DATAFILE):
         print('Missing', GOOGLE_ENGLISH_DATAFILE)
         sys.exit(-1)
@@ -120,6 +120,7 @@ if __name__ == '__main__':
     total_bigram  = 0
     unigram = file_get_json('unigram.json')
     bigram  = file_get_json('bigram.json')
+
     for key, cnt in unigram:
         total_unigram = total_unigram + cnt
     for first, second, cnt in bigram:

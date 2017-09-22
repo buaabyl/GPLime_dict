@@ -74,15 +74,16 @@ def get_all_articles():
                 l.append((absfn, sentences))
     return l
 
-def generate_plain_ngram():
+if __name__ == '__main__':
     if os.path.isfile('unigram.cache') or os.path.isfile('bigram.cache'):
-        return True
+        sys.exit(0)
 
     CACHE = 'articles.cache'
     if os.path.isfile(CACHE):
         print('loading cache:', CACHE)
         list_of_articles = file_get_cache(CACHE)
     else:
+        print('find all articles......')
         list_of_articles = get_all_articles()
         file_put_cache(CACHE, list_of_articles)
 
@@ -96,6 +97,7 @@ def generate_plain_ngram():
     bigram = {}
     N = len(list_of_articles)
     nr_processed = 0
+    print('parseing articles......')
     for _, lines in list_of_articles:
         msg = '%5.2f%% (%d/%d)\r' % (100 * nr_processed / N, nr_processed, N)
         sys.stdout.write(msg)
@@ -158,114 +160,5 @@ def generate_plain_ngram():
     del l
     gc.collect(2)
     print('dump bigram')
-
-
-if __name__ == '__main__':
-    PINYIN_MAP_CACHE = '../PINYIN_RLOOKUP.cache'
-    if not os.path.isfile(PINYIN_MAP_CACHE):
-        print('missing:', PINYIN_MAP_CACHE)
-        sys.exit(-1)
-    print('loading:', PINYIN_MAP_CACHE)
-    pinyin_map = file_get_cache(PINYIN_MAP_CACHE)
-
-    generate_plain_ngram()
-
-    dbname = 'ngram_chs.db'
-    print('write to', dbname) 
-    if os.path.exists(dbname):
-        os.remove(dbname)
-    db = sqlite3.connect(dbname)
-    cur = db.cursor()
-    cur.execute('CREATE TABLE unigram(phrase TEXT, freq REAL, pinyin TEXT)')
-    cur.execute('CREATE TABLE bigram(phrase0 TEXT, phrase1 TEXT, freq REAL)')
-
-    print('open pinyin_matching.log')
-    log = open('pinyin_matching.log', 'w', encoding='UTF-8')
-
-    total_unigram = 0
-    print('loading: unigram.cache')
-    unigram = file_get_cache('unigram.cache')
-    #unigram = file_get_json('unigram.json')
-    for key, cnt in unigram:
-        total_unigram = total_unigram + cnt
-    print('insert unigram into sqlite3 db')
-    print(' unigram =', total_unigram)
-    for k, v in unigram:
-        p = v / total_unigram
-        entropy = - p * math.log(p)
-
-        if k in pinyin_map:
-            pinyin = pinyin_map[k][0]
-        else:
-            log.write('Try to find pinyin for: %s: ' % k)
-
-            # greedy longest match for pinyin
-            skip = False
-            words = copy.deepcopy(k)
-            l = []
-            while len(words) > 0:
-                current_len = len(words)
-                n = len(words)
-                while n > 0:
-                    subk = words[:n]
-                    if subk in pinyin_map:
-                        candidate = pinyin_map[subk]
-                        if n > 1:
-                            l.extend(candidate[0].split(','))
-                        else:
-                            l.append(candidate[0])
-                        words = words[n:]
-                    else:
-                        n = n - 1
-
-                if current_len == len(words):
-                    skip = True
-                    break
-
-            if len(l) != len(k):
-                skip = True
-
-            if skip:
-                log.write(' fail!\n')
-                continue
-
-            pinyin = ','.join(l)
-            log.write(' found! %s\n' % str(pinyin))
-
-        cur.execute('INSERT INTO unigram(phrase, freq, pinyin) VALUES(?, ?, ?)', (k, entropy, pinyin))
-    del unigram
-    gc.collect(2)
-
-    log.close()
-
-
-    total_bigram  = 0
-    print('loading: bigram.cache')
-    bigram  = file_get_cache('bigram.cache')
-    #bigram  = file_get_json('bigram.json')
-    for first, second, cnt in bigram:
-        total_bigram = total_bigram + cnt
-
-    print('insert bigram into sqlite3 db')
-    print(' bigram  =', total_bigram)
-    max_entropy = 0
-    min_entropy = 0
-    for k1, k2, v in bigram:
-        entropy = -math.log(v/total_bigram)
-        if entropy > max_entropy:
-            max_entropy = entropy
-        if entropy < min_entropy:
-            min_entropy = entropy
-        cur.execute('INSERT INTO bigram(phrase0, phrase1, freq) VALUES(?, ?, ?)', (k1, k2, entropy))
-    del bigram
-    gc.collect(2)
-    print('entropy range:', min_entropy, max_entropy)
-
-
-    db.commit()
-
-    print('create index')
-    cur.execute('CREATE INDEX index_bigram ON bigram(phrase0, phrase1)')
-    db.commit()
 
 

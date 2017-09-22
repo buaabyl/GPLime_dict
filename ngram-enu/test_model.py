@@ -66,10 +66,10 @@ if __name__ == '__main__':
         l.append(token)
         print('INPUT:', ' '.join(l), '[  ]')
 
-        res = cur.execute('SELECT freq FROM unigram')
+        res = cur.execute('SELECT logp FROM unigram')
         if res:
             freq = res.fetchone()[0]
-            res = cur.execute('SELECT phrase1, freq FROM bigram WHERE phrase0 = ? ORDER BY freq ASC LIMIT 20', [token])
+            res = cur.execute('SELECT phrase1, logp FROM bigram WHERE phrase0 = ? ORDER BY freq ASC LIMIT 20', [token])
             if res:
                 for row in res.fetchall():
                     print('', row)

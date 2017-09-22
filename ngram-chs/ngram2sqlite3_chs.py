@@ -19,8 +19,6 @@
 # the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 # 
 #
-#  2017.09.07      created by {user}
-#
 # @ref 斯坦福大学自然语言处理第五课-拼写纠错（spelling-correction）
 # @url http://52opencourse.com/138/%E6%96%AF%E5%9D%A6%E7%A6%8F%E5%A4%A7%E5%AD%A6%E8%87%AA%E7%84%B6%E8%AF%AD%E8%A8%80%E5%A4%84%E7%90%86%E7%AC%AC%E4%BA%94%E8%AF%BE-%E6%8B%BC%E5%86%99%E7%BA%A0%E9%94%99%EF%BC%88spelling-correction%EF%BC%89
 #
@@ -85,13 +83,53 @@ def load_jieba_user_dict(fn):
 
     return l
 
-if __name__ == '__main__':
-    JIEBA_CHINESE_DATAFILE = '../jieba.dict'
-    NGRAM_ORIGINAL_DB       = ['unigram.cache', 'bigram.cache']
-    NGRAM_MERGED_DB         = 'ngram_full_chs.db'
-    NGRAM_MAX_COUNT         = 'ngram_full_chs.max'
+def word2pinyin(word, pinyin_map, log):
+    if word in pinyin_map:
+        return pinyin_map[word][0]
 
-    PINYIN_MAP_CACHE = '../PINYIN_RLOOKUP.cache'
+    log.write('Try to find pinyin for: %s: ' % word)
+
+    # greedy longest match for pinyin
+    skip = False
+    words = copy.deepcopy(word)
+    l = []
+    while len(words) > 0:
+        current_len = len(words)
+        n = len(words)
+        while n > 0:
+            subk = words[:n]
+            if subk in pinyin_map:
+                candidate = pinyin_map[subk]
+                if n > 1:
+                    l.extend(candidate[0].split(','))
+                else:
+                    l.append(candidate[0])
+                words = words[n:]
+            else:
+                n = n - 1
+
+        if current_len == len(words):
+            skip = True
+            break
+
+    if len(l) != len(k):
+        skip = True
+
+    if skip:
+        return None
+        log.write(' fail!\n')
+
+    pinyin = ','.join(l)
+    log.write(' found! %s\n' % str(pinyin))
+
+    return pinyin
+
+if __name__ == '__main__':
+    PINYIN_MAP_CACHE        = '../WORDS2PINYINS.cache'
+    JIEBA_CHINESE_DATAFILE  = '../jieba.dict'
+    NGRAM_ORIGINAL_DB       = ['unigram.cache', 'bigram.cache']
+    NGRAM_MERGED_DB         = 'ngram_chs.db'
+
     if not os.path.isfile(PINYIN_MAP_CACHE):
         print('missing:', PINYIN_MAP_CACHE)
         sys.exit(-1)
@@ -118,7 +156,8 @@ if __name__ == '__main__':
     db = sqlite3.connect(dbname)
     cur = db.cursor()
     cur.execute('CREATE TABLE unigram(phrase TEXT, freq REAL, pinyin TEXT)')
-    cur.execute('CREATE TABLE bigram(phrase0 TEXT, phrase1 TEXT, freq REAL)')
+    cur.execute('CREATE TABLE unigram_count(value INTEGER)')
+    cur.execute('CREATE TABLE bigram(phrase0 TEXT, phrase1 TEXT, logp REAL)')
 
 
     # --------------------------------------------------------------------------
@@ -157,51 +196,14 @@ if __name__ == '__main__':
         if freqcnt < min_freqcnt:
             min_freqcnt = freqcnt
 
+        pinyin = word2pinyin(k, pinyin_map, log)
+        if pinyin:
+            cur.execute('INSERT INTO unigram(phrase, freq, pinyin) VALUES(?, ?, ?)', (k, freqcnt, pinyin))
 
-        if k in pinyin_map:
-            pinyin = pinyin_map[k][0]
-        else:
-            log.write('Try to find pinyin for: %s: ' % k)
-
-            # greedy longest match for pinyin
-            skip = False
-            words = copy.deepcopy(k)
-            l = []
-            while len(words) > 0:
-                current_len = len(words)
-                n = len(words)
-                while n > 0:
-                    subk = words[:n]
-                    if subk in pinyin_map:
-                        candidate = pinyin_map[subk]
-                        if n > 1:
-                            l.extend(candidate[0].split(','))
-                        else:
-                            l.append(candidate[0])
-                        words = words[n:]
-                    else:
-                        n = n - 1
-
-                if current_len == len(words):
-                    skip = True
-                    break
-
-            if len(l) != len(k):
-                skip = True
-
-            if skip:
-                log.write(' fail!\n')
-                continue
-
-            pinyin = ','.join(l)
-            log.write(' found! %s\n' % str(pinyin))
-
-        cur.execute('INSERT INTO unigram(phrase, freq, pinyin) VALUES(?, ?, ?)', (k, freqcnt, pinyin))
     del unigram
     gc.collect(2)
-    f = open(NGRAM_MAX_COUNT, 'w')
-    f.write('%d\n' % max_freqcnt)
-    f.close()
+
+    cur.execute('INSERT INTO unigram_count(value) VALUES(?)', [max_freqcnt])
     print('freqcnt range:', min_freqcnt, max_freqcnt)
 
     log.close()
@@ -225,7 +227,7 @@ if __name__ == '__main__':
             max_p = logp
         if logp < min_p:
             min_p = logp
-        cur.execute('INSERT INTO bigram(phrase0, phrase1, freq) VALUES(?, ?, ?)', (k1, k2, logp))
+        cur.execute('INSERT INTO bigram(phrase0, phrase1, logp) VALUES(?, ?, ?)', (k1, k2, logp))
     del bigram
     gc.collect(2)
     print('entropy range:', min_p, max_p)

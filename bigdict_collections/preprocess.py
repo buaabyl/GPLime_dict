@@ -343,17 +343,17 @@ if __name__ == '__main__':
     #print('\n')
 
 
-    #print('write to jieba.dict')
-    #f = open('jieba.dict', 'w', encoding='UTF-8')
-    #i = 1
-    #for db_sub in db:
-    #    for k, freq in db_sub.items():
-    #        sys.stdout.write('%.3f%%\r' % (100 * i / total_words))
-    #        i = i + 1
-    #        chs = k.split('|')[1]
-    #        f.write('%s %.0f\n' % (chs, freq))
-    #f.close()
-    #print('\n')
+    print('write to ../jieba.dict')
+    f = open('../jieba.dict', 'w', encoding='UTF-8')
+    i = 1
+    for db_sub in db:
+        for k, freq in db_sub.items():
+            sys.stdout.write('%.3f%%\r' % (100 * i / total_words))
+            i = i + 1
+            chs = k.split('|')[1]
+            f.write('%s %.0f\n' % (chs, freq))
+    f.close()
+    print('\n')
 
     # TODO: handle multi announcement......
     WORD2PINYIN = {}
@@ -394,7 +394,7 @@ if __name__ == '__main__':
 
     #file_put_json('pinyin_rlookup.json', WORD2PINYIN)
 
-    fn = 'PINYIN_RLOOKUP.cache'
+    fn = '../WORDS2PINYINS.cache'
     print('write to:', fn)
     d = pickle.dumps(WORD2PINYIN)
     f = open(fn, 'wb')

@@ -91,18 +91,18 @@ def write_unigram_bigram_to_sqlite3(dbname, unigram, bigram):
 
     db = sqlite3.connect(dbname)
     cur = db.cursor()
-    cur.execute('CREATE TABLE unigram(phrase TEXT, freq REAL)')
-    cur.execute('CREATE TABLE bigram(phrase0 TEXT, phrase1 TEXT, freq REAL)')
+    cur.execute('CREATE TABLE unigram(phrase TEXT, logp REAL)')
+    cur.execute('CREATE TABLE bigram(phrase0 TEXT, phrase1 TEXT, logp REAL)')
 
     print('insert unigram into sqlite3 db')
     for k, v in unigram:
-        entropy = -math.log(v/total_unigram)
-        cur.execute('INSERT INTO unigram(phrase, freq) VALUES(?, ?)', (k, entropy))
+        logp = -math.log(v/total_unigram)
+        cur.execute('INSERT INTO unigram(phrase, logp) VALUES(?, ?)', (k, logp))
 
     print('insert bigram into sqlite3 db')
     for k1, k2, v in bigram:
-        entropy = -math.log(v/total_bigram)
-        cur.execute('INSERT INTO bigram(phrase0, phrase1, freq) VALUES(?, ?, ?)', (k1, k2, entropy))
+        logp = -math.log(v/total_bigram)
+        cur.execute('INSERT INTO bigram(phrase0, phrase1, logp) VALUES(?, ?, ?)', (k1, k2, logp))
 
     db.commit()
 
@@ -173,12 +173,5 @@ if __name__ == '__main__':
     l = sorted(l, key=lambda v:v[2], reverse=True)
     file_put_json('bigram.json', l)
     print('wrote to bigram.json')
-
-
-    unigram = file_get_json('unigram.json')
-    bigram  = file_get_json('bigram.json')
-    write_unigram_bigram_to_sqlite3('ngram_enu.db', unigram, bigram)
-
-    
 
 

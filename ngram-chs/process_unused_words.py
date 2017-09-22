@@ -112,11 +112,21 @@ if __name__ == '__main__':
         total_unigram = total_unigram + cnt
     print('insert unigram into sqlite3 db')
     print(' unigram =', total_unigram)
+    max_entropy = None
+    min_entropy = None
     for k, v in unigram:
         entropy = -math.log(v/total_unigram)
+        if min_entropy == None:
+            min_entropy = entropy
+            max_entropy = entropy
+        if entropy > max_entropy:
+            max_entropy = entropy
+        if entropy < min_entropy:
+            min_entropy = entropy
         cur.execute('INSERT INTO unigram(phrase, freq) VALUES(?, ?)', (k, entropy))
     del unigram
     gc.collect(2)
+    print('entropy range:', min_entropy, max_entropy)
 
 
     total_bigram  = 0
@@ -125,11 +135,21 @@ if __name__ == '__main__':
         total_bigram = total_bigram + cnt
     print('insert bigram into sqlite3 db')
     print(' bigram  =', total_bigram)
+    max_entropy = None
+    min_entropy = None
     for k1, k2, v in bigram:
         entropy = -math.log(v/total_bigram)
+        if min_entropy == None:
+            min_entropy = entropy
+            max_entropy = entropy
+        if entropy > max_entropy:
+            max_entropy = entropy
+        if entropy < min_entropy:
+            min_entropy = entropy
         cur.execute('INSERT INTO bigram(phrase0, phrase1, freq) VALUES(?, ?, ?)', (k1, k2, entropy))
     del bigram
     gc.collect(2)
+    print('entropy range:', min_entropy, max_entropy)
 
 
     db.commit()

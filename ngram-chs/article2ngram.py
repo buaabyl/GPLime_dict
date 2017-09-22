@@ -166,11 +166,18 @@ if __name__ == '__main__':
 
     print('insert bigram into sqlite3 db')
     print(' bigram  =', total_bigram)
+    max_entropy = 0
+    min_entropy = 0
     for k1, k2, v in bigram:
         entropy = -math.log(v/total_bigram)
+        if entropy > max_entropy:
+            max_entropy = entropy
+        if entropy < min_entropy:
+            min_entropy = entropy
         cur.execute('INSERT INTO bigram(phrase0, phrase1, freq) VALUES(?, ?, ?)', (k1, k2, entropy))
     del bigram
     gc.collect(2)
+    print('entropy range:', min_entropy, max_entropy)
 
 
     db.commit()

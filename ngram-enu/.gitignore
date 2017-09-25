@@ -1,3 +1,8 @@
 *.db
 bigram.json
 unigram.json
+bbc_dump.json
+bbc_index.json
+english_5k.info
+google_english.txt
+

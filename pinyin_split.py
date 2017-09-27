@@ -88,7 +88,42 @@ PINYIN_LUT = {
     'uo'  : 55,
     'v'   : 56,
 }
-PINYIN_LUT_REVERSE = {}
+
+PINYIN_VOWEL = {
+    'a'   : [],
+    'ai'  : [],
+    'an'  : [],
+    'ang' : [],
+    'ao'  : [],
+    'e'   : [],
+    'ei'  : [],
+    'en'  : [],
+    'eng' : [],
+    'er'  : [],
+    'i'   : [],
+    'ia'  : [],
+    'ian' : [],
+    'iang': [],
+    'iao' : [],
+    'ie'  : [],
+    'in'  : [],
+    'ing' : [],
+    'iong': [],
+    'iu'  : [],
+    'o'   : [],
+    'ong' : [],
+    'ou'  : [],
+    'u'   : [],
+    'ua'  : [],
+    'uai' : [],
+    'uan' : [],
+    'uang': [],
+    'ue'  : [],
+    'ui'  : [],
+    'un'  : [],
+    'uo'  : [],
+    'v'   : [],
+}
 
 VALID_PAIRS = {
     " " :  ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "er", "o", "ou"],
@@ -118,32 +153,57 @@ VALID_PAIRS = {
 }
 
 def pinyin_split(s, depth=1):
-    tokens = s.split("'")
     MAX_PINYIN = 6
+
+    s = re.sub(r"[']+", "'", s)
+    if s.startswith("'"):
+        s = s[1:]
 
     l = []
 
-    # TODO: merge token * token ...
-    for token in tokens:
-        n = len(token)
-        if n > MAX_PINYIN:
-            n = MAX_PINYIN
-        while n > 0:
-            k = token[:n]
-            if k in PINYIN_LUT:
-                #print('*' * depth, k, token[n:])
-                res = pinyin_split(token[n:], depth+1)
-                if len(res) == 0:
-                    l.append(k)
-                else:
-                    for item in res:
-                        l.append("%s'%s" % (k, item))
-            n = n - 1
+    n = len(s)
+    if n == 0:
+        return None
+    if n > MAX_PINYIN:
+        n = MAX_PINYIN
+    while n > 0:
+        k = s[:n]
+        if k in PINYIN_LUT:
+            #print('*' * depth, k, s[n:])
+            res = pinyin_split(s[n:], depth+1)
+            if not res:
+                l.append(k)
+            else:
+                for item in res:
+                    l.append("%s'%s" % (k, item))
+        n = n - 1
 
     return l
 
 
+def pinyin_filter(model, list_pinyins):
+    l = []
+
+    for pinyins in list_pinyins:
+        tokens = pinyins.split("'")
+
+        # TODO: using model to pair consonant and vowel
+
+        n = len(tokens)
+        if n == 0:
+            continue
+        len_per_pinyin = sum([len(token) for token in tokens])/n
+        l.append((len_per_pinyin, pinyins))
+
+    l.sort(key=lambda v:v[0], reverse=True)
+    l = [pinyins for _, pinyins in l[:3]]
+
+    return l
+
 if __name__ == '__main__':
+    f = open('pinyin.unigram')
+    model = json.loads(f.read())
+    f.close()
 
     l = [
         "lian",
@@ -153,9 +213,11 @@ if __name__ == '__main__':
         "zhonghuarmghguo",
     ]
 
-
     for s in l:
         res = pinyin_split(s)
+        res = pinyin_filter(model, res)
+        res.sort(key=lambda v:len(v.split("'")))
+
         jstr = json.dumps(res, indent=4)
         print(s)
         print(jstr)

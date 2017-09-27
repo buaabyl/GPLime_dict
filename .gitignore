@@ -1,3 +1,4 @@
 *.cache
 *.dict
 *.log
+ngram_*.db

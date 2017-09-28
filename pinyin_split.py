@@ -17,7 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; see the file COPYING.  If not, write to
 # the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
-# 
 #
 import sys
 import os
@@ -25,10 +24,9 @@ import re
 import getopt
 import glob
 import json
+import math
 
-PINYIN_LUT = {
-    # consonant
-    ' '   : 0,
+PINYIN_CONSONANT = {
     'b'   : 1,
     'c'   : 2,
     'ch'  : 3,
@@ -52,8 +50,9 @@ PINYIN_LUT = {
     'y'   : 21,
     'z'   : 22,
     'zh'  : 23,
+}
 
-    #vowel
+PINYIN_VOWEL = {
     'a'   : 24,
     'ai'  : 25,
     'an'  : 26,
@@ -89,42 +88,6 @@ PINYIN_LUT = {
     'v'   : 56,
 }
 
-PINYIN_VOWEL = {
-    'a'   : [],
-    'ai'  : [],
-    'an'  : [],
-    'ang' : [],
-    'ao'  : [],
-    'e'   : [],
-    'ei'  : [],
-    'en'  : [],
-    'eng' : [],
-    'er'  : [],
-    'i'   : [],
-    'ia'  : [],
-    'ian' : [],
-    'iang': [],
-    'iao' : [],
-    'ie'  : [],
-    'in'  : [],
-    'ing' : [],
-    'iong': [],
-    'iu'  : [],
-    'o'   : [],
-    'ong' : [],
-    'ou'  : [],
-    'u'   : [],
-    'ua'  : [],
-    'uai' : [],
-    'uan' : [],
-    'uang': [],
-    'ue'  : [],
-    'ui'  : [],
-    'un'  : [],
-    'uo'  : [],
-    'v'   : [],
-}
-
 VALID_PAIRS = {
     " " :  ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "er", "o", "ou"],
     "b" :  ["a", "ai", "an", "ang", "ao", "ei", "en", "eng", "i", "ian", "iao", "ie", "in", "ing", "o", "u"],
@@ -152,9 +115,79 @@ VALID_PAIRS = {
     "w" :  ["a", "ai", "an", "ang", "ei", "en", "eng", "o", "u"],
 }
 
-def pinyin_split(s, depth=1):
+def load_model(fn):
+    valid_pinyin = {}
+    for k, vowels in VALID_PAIRS.items():
+        for vowel in vowels:
+            valid_pinyin[k + "'" + vowel] = (k, vowel)
+
+    f = open(fn)
+    m = json.loads(f.read())
+    f.close()
+
+    list_to_delete = []
+
+    # check pinyin in unigram is valid pair
+    for k, freq in m.items():
+        if k not in valid_pinyin:
+            list_to_delete.append(k)
+    for k in list_to_delete:
+        del m[k]
+
+    # check all valid pair appear at least one time
+    for k in valid_pinyin:
+        if k not in m:
+            m[k] = 1
+
+    # convert counter to probability
+    total = 0
+    for k, freq in m.items():
+        total = total + freq
+    total = total + len(m)
+
+    # add 1 to every counter
+    model = {'': 0}
+    for k, freq in m.items():
+        p = (freq + 1) / total
+        logp = -math.log(p)
+        model[k] = logp
+
+        newk = k.replace("'", '')
+        newk = newk.replace(" ", '')
+        if newk != k:
+            model[newk] = logp
+    return model
+
+def is_consonant(s):
+    if not s:
+        return False
+    return s in PINYIN_CONSONANT
+
+def is_vowel(s):
+    if not s:
+        return False
+    return s in PINYIN_VOWEL
+
+def is_independent_vowel(s):
+    if not s:
+        return False
+    return s in ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "er", "o", "ou"]
+
+def is_valid_pair(consonant, vowel):
+    if consonant not in VALID_PAIRS:
+        return False
+    if vowel not in VALID_PAIRS[consonant]:
+        return False
+    return True 
+
+'''
+@breif      split input sequences to independent consonant and vowel
+@return     a list of possible pinyin pair, each consonant or vowel divided by "'"
+'''
+def lexcial_analysis(s, depth=1):
     MAX_PINYIN = 6
 
+    # clean typo input like this: "'''"
     s = re.sub(r"[']+", "'", s)
     if s.startswith("'"):
         s = s[1:]
@@ -168,59 +201,122 @@ def pinyin_split(s, depth=1):
         n = MAX_PINYIN
     while n > 0:
         k = s[:n]
-        if k in PINYIN_LUT:
-            #print('*' * depth, k, s[n:])
-            res = pinyin_split(s[n:], depth+1)
-            if not res:
+        if is_consonant(k) or is_vowel(k):
+            suffix = s[n:]
+            if len(suffix) == 0:
                 l.append(k)
             else:
-                for item in res:
-                    l.append("%s'%s" % (k, item))
+                res = lexcial_analysis(suffix, depth+1)
+                if not res:
+                    return None
+                else:
+                    for item in res:
+                        l.append("%s'%s" % (k, item))
         n = n - 1
 
     return l
 
 
-def pinyin_filter(model, list_pinyins):
-    l = []
+def parse_and_filter(model, list_pinyins):
+    list_of_candidates = []
+
+    index = 0
 
     for pinyins in list_pinyins:
         tokens = pinyins.split("'")
+        tokens.append(None)
 
-        # TODO: using model to pair consonant and vowel
-
+        i = 0
         n = len(tokens)
-        if n == 0:
+        error = False
+        list_of_pair = []
+        while i < n-1:
+            k1 = tokens[i]
+            k2 = tokens[i+1]
+
+            # last token
+            if not k2:
+                if is_consonant(k1):
+                    list_of_pair.append("%s'" % (k1))
+                elif is_vowel(k1) and is_independent_vowel(k1):
+                    list_of_pair.append("'%s" % (k1))
+                else:
+                    error = True
+                break
+
+            if is_consonant(k1) and is_vowel(k2) and is_valid_pair(k1, k2):
+                list_of_pair.append("%s'%s" % (k1, k2))
+                i = i + 2
+            elif is_consonant(k1):
+                list_of_pair.append("%s'" % (k1))
+                i = i + 1
+            elif is_vowel(k1) and is_independent_vowel(k1):
+                list_of_pair.append(" '%s" % (k1))
+                i = i + 1
+            else:
+                error = True
+                break
+
+        if error:
+            print('    Parser Error, remove this candidate:', tokens)
             continue
-        len_per_pinyin = sum([len(token) for token in tokens])/n
-        l.append((len_per_pinyin, pinyins))
 
-    l.sort(key=lambda v:v[0], reverse=True)
-    l = [pinyins for _, pinyins in l[:3]]
+        P = 0
+        for pinyin in list_of_pair:
+            if pinyin in model:
+                P = P + model[pinyin]
+            else:
+                P = P + model['']
 
-    return l
+        list_of_candidates.append((P, list_of_pair))
+        
+        index = index + 1
+
+    list_of_candidates.sort(key=lambda v:v[0])
+    for P, list_of_pair in list_of_candidates:
+        print('%12.6f: %s' % (P, ','.join(list_of_pair)))
+
+    print()
+
+    return list_of_candidates
+
 
 if __name__ == '__main__':
-    f = open('pinyin.unigram')
-    model = json.loads(f.read())
-    f.close()
+    model = load_model('pinyin.unigram')
 
     l = [
-        "lian",
-        "li'an",
-        "liang",
+        #"lian",     # li'an, lian
+        #"livn",     # typo
+        #"li'an",    # li'an
+        "liang",    # li'ang, liang, li'an'g
         "li'ang",
+        "lii",      #typo
+        "liyi",      #typo
+        "li3",      #typo
         "zhonghuarmghguo",
     ]
 
     for s in l:
-        res = pinyin_split(s)
-        res = pinyin_filter(model, res)
-        res.sort(key=lambda v:len(v.split("'")))
+        print('INPUT>', s)
+        res = lexcial_analysis(s)
+        if not res:
+            print('    Lexcial error')
+            print()
+            continue
 
-        jstr = json.dumps(res, indent=4)
-        print(s)
-        print(jstr)
-        print()
+        print('lexcial: %d' % len(res))
+        i = 0
+        for item in res:
+            print('    %2d: %s' % (i, str(item)))
+            i = i + 1
+
+        print('parse:')
+        parse_and_filter(model, res)
+        #res.sort(key=lambda v:len(v.split("'")))
+
+        #jstr = json.dumps(res, indent=4)
+        #print(s)
+        #print(jstr)
+        #print()
 
 

@@ -285,14 +285,16 @@ if __name__ == '__main__':
     model = load_model('pinyin.unigram')
 
     l = [
-        #"lian",     # li'an, lian
-        #"livn",     # typo
-        #"li'an",    # li'an
+        "lian",     # li'an, lian
+        "livn",     # typo
+        "li'an",    # li'an
         "liang",    # li'ang, liang, li'an'g
         "li'ang",
         "lii",      #typo
-        "liyi",      #typo
+        "liyi",     #typo
         "li3",      #typo
+        "ceshiyixia",
+        "chesiyixia",
         "zhonghuarmghguo",
     ]
 

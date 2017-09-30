@@ -26,12 +26,17 @@ import re
 import getopt
 import glob
 
+#
+#   The observation (normal, cold, dizzy) is what people tell.
+#
+#   The `Healthy` or `Fever` is hidden, must will calculate.
+#
 obs     = ('normal', 'cold', 'dizzy')
 states  = ('Healthy', 'Fever')
 
 start_p = {
             'Healthy': 0.6,
-            'Fever': 0.4
+            'Fever'  : 0.4
         }
 trans_p = {
             'Healthy' : {
@@ -43,6 +48,9 @@ trans_p = {
                 'Fever'  : 0.6
             }
         }
+
+# The emission_probability represents how likely the patient is to feel on each day. 
+# this mark as P(cold|Healthy)
 emit_p  = {
             'Healthy' : {
                 'normal' : 0.5,

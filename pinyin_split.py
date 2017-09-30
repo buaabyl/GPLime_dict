@@ -184,11 +184,13 @@ def is_valid_pair(consonant, vowel):
 @breif      split input sequences to independent consonant and vowel
 @return     a list of possible pinyin pair, each consonant or vowel divided by "'"
 '''
-def lexcial_analysis(s, depth=1):
+def lexcial_analysis(s, depth=0):
     MAX_PINYIN = 6
 
     # clean typo input like this: "'''"
-    s = re.sub(r"[']+", "'", s)
+    if depth == 0:
+        s = re.sub(r"[']+", "'", s)
+
     if s.startswith("'"):
         s = s[1:]
 
@@ -211,7 +213,7 @@ def lexcial_analysis(s, depth=1):
                     return None
                 else:
                     for item in res:
-                        l.append("%s'%s" % (k, item))
+                        l.append("%s|%s" % (k, item))
         n = n - 1
 
     return l
@@ -223,7 +225,7 @@ def parse_and_filter(model, list_pinyins):
     index = 0
 
     for pinyins in list_pinyins:
-        tokens = pinyins.split("'")
+        tokens = pinyins.split("|")
         tokens.append(None)
 
         i = 0
@@ -258,7 +260,7 @@ def parse_and_filter(model, list_pinyins):
                 break
 
         if error:
-            print('    Parser Error, remove this candidate:', tokens)
+            print('    Warning: remove this candidate:', tokens)
             continue
 
         P = 0
@@ -273,12 +275,21 @@ def parse_and_filter(model, list_pinyins):
         index = index + 1
 
     list_of_candidates.sort(key=lambda v:v[0])
-    for P, list_of_pair in list_of_candidates:
-        print('%12.6f: %s' % (P, ','.join(list_of_pair)))
-
-    print()
 
     return list_of_candidates
+
+def create_pinyin_for_candidates(model, list_of_candidates):
+    for P, list_of_pair in res:
+        l = []
+        for pinyin in list_of_pair:
+            consonant, vowel = pinyin.split("'")
+            if consonant and vowel:
+                continue
+            if consonant:
+                print('  [' + pinyin + '] to find vowel')
+            else:
+                print('  [' + pinyin + '] to find consonant')
+
 
 
 if __name__ == '__main__':
@@ -287,33 +298,50 @@ if __name__ == '__main__':
     l = [
         "lian",     # li'an, lian
         "livn",     # typo
-        "li'an",    # li'an
-        "liang",    # li'ang, liang, li'an'g
-        "li'ang",
-        "lii",      #typo
-        "liyi",     #typo
-        "li3",      #typo
-        "ceshiyixia",
-        "chesiyixia",
-        "zhonghuarmghguo",
+        #"li'an",    # li'an
+        #"liang",    # li'ang, liang, li'an'g
+        #"li'ang",
+        #"lii",      #typo
+        #"liyi",     #typo
+        #"li3",      #typo
+        #"ceshiyixia",
+        #"chesiyixia",
+        #"zhonghuarmghguo",
     ]
 
     for s in l:
-        print('INPUT>', s)
+        print('-' * 80)
+        print('input:', s)
         res = lexcial_analysis(s)
         if not res:
             print('    Lexcial error')
             print()
             continue
-
         print('lexcial: %d' % len(res))
         i = 0
         for item in res:
-            print('    %2d: %s' % (i, str(item)))
+            print('    %2d: %s' % (i, item))
             i = i + 1
 
+
+
         print('parse:')
-        parse_and_filter(model, res)
+        res = parse_and_filter(model, res)
+        if not res:
+            print('    Parser error')
+            print()
+            continue
+        for P, list_of_pair in res:
+            print('%12.6f: %s' % (P, '|'.join(list_of_pair)))
+        print()
+
+
+
+        print('fill:')
+        res = create_pinyin_for_candidates(model, res)
+        print()
+
+
         #res.sort(key=lambda v:len(v.split("'")))
 
         #jstr = json.dumps(res, indent=4)

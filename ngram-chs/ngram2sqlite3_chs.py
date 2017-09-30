@@ -116,8 +116,8 @@ def word2pinyin(word, pinyin_map, log):
         skip = True
 
     if skip:
-        return None
         log.write(' fail!\n')
+        return None
 
     pinyin = ','.join(l)
     log.write(' found! %s\n' % str(pinyin))

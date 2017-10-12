@@ -53,9 +53,9 @@ def write_unigram_bigram_to_sqlite3(dbname, unigram, bigram):
         os.remove(dbname)
     total_unigram = 0
     total_bigram  = 0
-    for key, cnt in unigram:
+    for key, cnt in unigram.items():
         total_unigram = total_unigram + cnt
-    for first, second, cnt in bigram:
+    for key, cnt in bigram.items():
         total_bigram = total_bigram + cnt
     print('total count:')
     print(' unigram =', total_unigram)
@@ -63,24 +63,49 @@ def write_unigram_bigram_to_sqlite3(dbname, unigram, bigram):
 
     db = sqlite3.connect(dbname)
     cur = db.cursor()
-    cur.execute('CREATE TABLE unigram(phrase TEXT, logp REAL)')
+    cur.execute('CREATE TABLE unigram(phrase TEXT, freq REAL)')
+    cur.execute('CREATE TABLE unigram_count(value INTEGER)')
     cur.execute('CREATE TABLE bigram(phrase0 TEXT, phrase1 TEXT, logp REAL)')
 
+    cur.execute('INSERT INTO unigram_count(value) VALUES(?)', [total_unigram])
+
     print('insert unigram into sqlite3 db')
-    for k, v in unigram:
-        logp = -math.log(v/total_unigram)
-        cur.execute('INSERT INTO unigram(phrase, logp) VALUES(?, ?)', (k, logp))
+    for k, v in unigram.items():
+        cur.execute('INSERT INTO unigram(phrase, freq) VALUES(?, ?)', (k, v))
 
     print('insert bigram into sqlite3 db')
-    for k1, k2, v in bigram:
-        logp = -math.log(v/total_bigram)
+    max_p = None
+    min_p = None
+    for key, v in bigram.items():
+        k1, k2 = key.split(' ')
+        bi_freq = v
+        uni_freq = unigram[k1]
+
+        logp= -math.log(bi_freq/uni_freq)
+        if min_p == None:
+            min_p = logp
+            max_p = logp
+        if logp > max_p:
+            max_p = logp
+        if logp < min_p:
+            min_p = logp
         cur.execute('INSERT INTO bigram(phrase0, phrase1, logp) VALUES(?, ?, ?)', (k1, k2, logp))
 
     db.commit()
+    print('entropy range:', min_p, max_p)
 
     print('create index')
     cur.execute('CREATE INDEX index_bigram ON bigram(phrase0, phrase1)')
     db.commit()
+
+    print('First 100:')
+    res = cur.execute('SELECT phrase0, phrase1, logp from bigram ORDER BY logp ASC LIMIT 100')
+    if res:
+        rows = res.fetchall()
+        for phrase0, phrase1, logp in rows:
+            print(' %.8f, %.20s, %.20s' % (logp, phrase0, phrase1))
+
+
 
 def load_google_english_list(fn):
     f = open(fn, 'r')
@@ -120,9 +145,9 @@ if __name__ == '__main__':
     unigram = file_get_json('unigram.json')
     bigram  = file_get_json('bigram.json')
 
-    for key, cnt in unigram:
+    for key, cnt in unigram.items():
         total_unigram = total_unigram + cnt
-    for first, second, cnt in bigram:
+    for key, cnt in bigram.items():
         total_bigram = total_bigram + cnt
     print('total count:')
     print(' unigram =', total_unigram)
@@ -132,10 +157,11 @@ if __name__ == '__main__':
     print('loaded google words list', len(google_words_list))
 
     # We need to do some research on it, but just add one for testing
-    for kv in unigram:
-        kv[1] = kv[1] + 1
+    for key in unigram:
+        unigram[key] = unigram[key] + 1
     for word in google_words_list:
-        unigram.append([word, 1])
+        if word not in unigram:
+            unigram[word] = 1
     
     write_unigram_bigram_to_sqlite3(NGRAM_MERGED_DB, unigram, bigram)
     

@@ -164,10 +164,11 @@ if __name__ == '__main__':
     unigram = file_get_cache('unigram.cache')
 
     total_unigram = 0
-    for key, cnt in unigram:
+    for key, cnt in unigram.items():
         total_unigram = total_unigram + cnt
     for word in words_list:
-        unigram.append([word, 0])
+        if word not in unigram:
+            unigram[word] = 0
 
     # every record add one
     total_unigram += len(unigram)
@@ -182,10 +183,7 @@ if __name__ == '__main__':
     print(' unigram =', total_unigram)
     max_freqcnt = None
     min_freqcnt = None
-    for k, v in unigram:
-        #p = (v + 1) / total_unigram
-        #freqcnt = - p * math.log(p)
-
+    for k, v in unigram.items():
         # just counter
         freqcnt = v + 1
         if min_freqcnt == None:
@@ -200,26 +198,33 @@ if __name__ == '__main__':
         if pinyin:
             cur.execute('INSERT INTO unigram(phrase, freq, pinyin) VALUES(?, ?, ?)', (k, freqcnt, pinyin))
 
-    del unigram
-    gc.collect(2)
-
     cur.execute('INSERT INTO unigram_count(value) VALUES(?)', [max_freqcnt])
     print('freqcnt range:', min_freqcnt, max_freqcnt)
+
+    res = cur.execute('SELECT phrase0, phrase1, logp from bigram ORDER BY logp ASC LIMIT 20', [max_freqcnt])
+    if res:
+        rows = res.fetchall()
+        for phrase0, phrase1, logp in rows:
+            print('%.8f, %.20s, %.20s' % (logp, phrase0, phrase1))
 
     log.close()
 
 
     # --------------------------------------------------------------------------
-    total_bigram  = 0
     bigram  = file_get_cache('bigram.cache')
-    for first, second, cnt in bigram:
-        total_bigram = total_bigram + cnt
     print('insert bigram into sqlite3 db')
-    print(' bigram  =', total_bigram)
     max_p = None
     min_p = None
-    for k1, k2, v in bigram:
-        logp= -math.log(v/total_bigram)
+    for k, v in bigram.items():
+        k1, k2 = k.split(' ')
+        bi_freq = v
+        uni_freq = unigram[k1] + 1
+
+        if uni_freq == 0 or bi_freq == 0:
+            print('IGNORE', k1, k2, bi_freq, uni_freq)
+            continue
+
+        logp= -math.log(bi_freq/uni_freq)
         if min_p == None:
             min_p = logp
             max_p = logp
@@ -228,6 +233,10 @@ if __name__ == '__main__':
         if logp < min_p:
             min_p = logp
         cur.execute('INSERT INTO bigram(phrase0, phrase1, logp) VALUES(?, ?, ?)', (k1, k2, logp))
+
+    del unigram
+    gc.collect(2)
+
     del bigram
     gc.collect(2)
     print('entropy range:', min_p, max_p)

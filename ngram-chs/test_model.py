@@ -56,6 +56,7 @@ if __name__ == '__main__':
     cur = db.cursor()
 
 
+    piyins = 'zhe shi yi ge jian dan de ce shi yong li'
     s = '这 是 一个 简单的 测试 用例'
     tokens = s.split(' ')
 
@@ -72,7 +73,7 @@ if __name__ == '__main__':
         t2 = time.time()
         if res:
             freq = res.fetchone()[0]
-            res = cur.execute('SELECT phrase1, freq FROM bigram WHERE phrase0 = ? ORDER BY freq ASC LIMIT 20', [token])
+            res = cur.execute('SELECT phrase1, logp FROM bigram WHERE phrase0 = ? ORDER BY logp ASC LIMIT 20', [token])
             t3 = time.time()
             if res:
                 for row in res.fetchall():

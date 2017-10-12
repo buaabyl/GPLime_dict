@@ -61,10 +61,13 @@ def file_get_json(dbname):
     return db
 
 def strip_nonenglish(s):
+    # TODO: find better way
     s = s.replace("'s", " is")
     s = s.replace("'m", " am")
     s = s.replace("don't", "do not")
     s = s.replace("didn't", "did not")
+    s = s.replace("can't", "can not")
+    s = s.replace("won't", "would not")
     s = s.replace("'ll", " will")
     l = []
     for c in s:
@@ -129,17 +132,35 @@ if __name__ == '__main__':
         #if nr_processed == 100:
         #    break
 
+        SPLIT_MAP = {
+            "wasn"  : ["was", "not"],
+            "hasn"  : ["has", "not"],
+            "hadn"  : ["had", "not"],
+            "don"   : ["do", "not"],
+            "doesn" : ["does", "not"],
+            "isn"   : ["is", "not"],
+            "didn"  : ["did", "not"],
+            "wouldn": ["would", "not"],
+        }
+
         for line in lines:
             line = strip_nonenglish(line)
 
-            sentences = re.split(r'[,.?!]', line)
-            
+            sentences = re.split(r'[,.?!=]', line)            
             for sentence in sentences:
                 #res = jieba.cut(sentence)
                 res = nltk.word_tokenize(sentence)
 
+                l = [v for v in res]
+                l2 = []
+                for s in l:
+                    if s in SPLIT_MAP:
+                        l2.extend(SPLIT_MAP[s])
+                    else:
+                        l2.append(s)
+
                 previous = None
-                for token in res:
+                for token in l2:
                     #if re.match(r'\W+', token):
                     if not re.match(r'[0-9a-zA-Z_-]', token):
                         continue
@@ -157,21 +178,23 @@ if __name__ == '__main__':
     print('\n')
 
     print('unigram', len(unigram))
-    l = []
-    for k,v in unigram.items():
-        l.append((k, v))
-    l = sorted(l, key=lambda v:v[1], reverse=True)
-    file_put_json('unigram.json', l)
+    #l = []
+    #for k,v in unigram.items():
+    #    l.append((k, v))
+    #l = sorted(l, key=lambda v:v[1], reverse=True)
+    #file_put_json('unigram.json', l)
+    file_put_json('unigram.json', unigram)
     print('wrote to unigram.json')
 
 
     print('bigram', len(bigram))
-    l = []
-    for k,v in bigram.items():
-        first, second = k.split(' ')
-        l.append((first, second, v))
-    l = sorted(l, key=lambda v:v[2], reverse=True)
-    file_put_json('bigram.json', l)
+    #l = []
+    #for k,v in bigram.items():
+    #    first, second = k.split(' ')
+    #    l.append((first, second, v))
+    #l = sorted(l, key=lambda v:v[2], reverse=True)
+    #file_put_json('bigram.json', l)
+    file_put_json('bigram.json', bigram)
     print('wrote to bigram.json')
 
 

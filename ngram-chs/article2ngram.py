@@ -134,30 +134,38 @@ if __name__ == '__main__':
     print('\n')
 
     print('unigram', len(unigram))
-    l = []
-    for k,v in unigram.items():
-        l.append((k, v))
-    l = sorted(l, key=lambda v:v[1], reverse=True)
-    del unigram
-    gc.collect(2)
-    file_put_cache('unigram.cache', l)
+    #l = []
+    #for k,v in unigram.items():
+    #    l.append((k, v))
+    #l = sorted(l, key=lambda v:v[1], reverse=True)
+    #del unigram
+    #gc.collect(2)
+    #file_put_cache('unigram.cache', l)
     #file_put_json('unigram.json', l)
-    del l
+    #del l
+    #gc.collect(2)
+
+    file_put_cache('unigram.cache', unigram)
+    del unigram
     gc.collect(2)
     print('dump unigram')
 
 
     print('bigram', len(bigram))
-    l = []
-    for k,v in bigram.items():
-        first, second = k.split(' ')
-        l.append((first, second, v))
-    l = sorted(l, key=lambda v:v[2], reverse=True)
-    del bigram
-    gc.collect(2)
-    file_put_cache('bigram.cache', l)
+    #l = []
+    #for k,v in bigram.items():
+    #    first, second = k.split(' ')
+    #    l.append((first, second, v))
+    #l = sorted(l, key=lambda v:v[2], reverse=True)
+    #del bigram
+    #gc.collect(2)
+    #file_put_cache('bigram.cache', l)
     #file_put_json('bigram.json', l)
-    del l
+    #del l
+    #gc.collect(2)
+
+    file_put_cache('bigram.cache', bigram)
+    del bigram
     gc.collect(2)
     print('dump bigram')
 

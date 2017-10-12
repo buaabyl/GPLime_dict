@@ -23,6 +23,7 @@ import os
 import re
 import getopt
 import glob
+import types
 import json
 import math
 
@@ -349,18 +350,176 @@ def simple_verify():
         #print(jstr)
         #print()
 
+def lexcial2(s):
+    PINYINS = {}
+    PINYINS_NO_CONSONANT = VALID_PAIRS[' ']
+
+    CONFUSION = {}
+    for vowel in PINYIN_VOWEL:
+        last_char = vowel[-1]
+        for consonant in PINYIN_CONSONANT:
+            if consonant.startswith(last_char):
+                prefix = vowel[:-1]
+                if prefix in PINYIN_VOWEL:
+                    CONFUSION[vowel] = (prefix, consonant)
+
+    max_pinyin_len = 0
+    for consonant, vowels in VALID_PAIRS.items():
+        if consonant == ' ':
+            continue
+        for vowel in vowels:
+            pinyin = consonant + vowel
+            PINYINS[pinyin] = (consonant, vowel)
+            if len(pinyin) > max_pinyin_len:
+                max_pinyin_len = len(pinyin)
+
+    # user input `'` means seperate word, not between consonant and vowel!
+    first_split_list = s.split("'")
+    l = []
+    for s in first_split_list:
+        offs = 0
+        n = len(s)
+        current_l = []
+        while offs < n:
+            sublen = max_pinyin_len
+            while sublen > 0:
+                substr = s[offs:offs+sublen]
+                if substr in PINYINS:
+                    break
+                sublen = sublen - 1
+
+            if sublen > 0:
+                k, v = PINYINS[substr]
+                if v in CONFUSION:
+                    confusion = CONFUSION[v]
+                    current_l.append((substr, (k + confusion[0], confusion[1])))
+                else:
+                    current_l.append(substr)
+                offs = offs + sublen
+            else:
+                current_l.append(s[offs])
+                offs = offs + 1
+
+
+        print(current_l)
+        words = []
+        index = 0
+        n = len(current_l)
+        while index < n:
+            token = current_l[index]
+            if not isinstance(token, tuple):
+                index = index + 1
+                l.append(token)
+                continue
+
+            if index == n - 1:
+                l.append(token[0])
+                break
+
+            # TODO: how to deal with next token is tuple?
+            next_token = current_l[index+1]
+            if isinstance(next_token, tuple):
+                index = index + 1
+                l.append(token[0])
+                continue
+
+            longest_str             = token[0]
+            confusion_valid_str     = token[1][0]
+            confusion_isolated_con  = token[1][1]
+
+            if confusion_isolated_con in VALID_PAIRS:
+                if next_token in VALID_PAIRS[confusion_isolated_con]:
+                    l.append(confusion_valid_str)
+                    l.append(confusion_isolated_con + next_token)
+                    index = index + 2
+                    continue
+
+            l.append(longest_str)
+
+            index = index + 1
+            
+    print(l)
+
+def lexcial3(s):
+    PINYINS = {}
+    max_pinyin_len = 0
+    for consonant, vowels in VALID_PAIRS.items():
+        if consonant == ' ':
+            continue
+        for vowel in vowels:
+            pinyin = consonant + vowel
+            PINYINS[pinyin] = (consonant, vowel)
+            if len(pinyin) > max_pinyin_len:
+                max_pinyin_len = len(pinyin)
+
+    # positive search
+    offs = 0
+    n = len(s)
+    l = []
+    while offs < n:
+        sublen = max_pinyin_len
+        while sublen > 0:
+            substr = s[offs:offs+sublen]
+            if substr in PINYINS:
+                break
+            sublen = sublen - 1
+
+        if sublen > 0:
+            l.append(substr)
+            offs = offs + sublen
+        else:
+            l.append(s[offs])
+            offs = offs + 1
+
+    # reverse search
+    offs = n - 1 
+    l2 = []
+    while 0 < offs:
+        sublen = max_pinyin_len
+        while sublen > 0:
+            substr = s[offs-sublen+1:offs+1]
+            if substr in PINYINS:
+                break
+            sublen = sublen - 1
+
+        if sublen > 0:
+            l2.insert(0, substr)
+            offs = offs - sublen
+        else:
+            l2.insert(0, s[offs])
+            offs = offs - 1
+
+
+    print(l)
+    print(l2)
+
 if __name__ == '__main__':
     model = load_model('pinyin.unigram')
 
-    pinyins    = 'zheshiyigejiandandeceshiyongli'
-    selections = '这 是 一个 简单的 测试 用例'
+    testcases = {
+            "lian"                           : '连/李安',
+            "liangen"                        : '恋歌/李安格',
+            "zhonghrmgongheg"                : '中华人民共和国',
+            "zhonghuarenmingongheguo"        : '中华人民共和国',
+            "zheshiyigejiandandeceshiyongli": '这 是 一个 简单的 测试 用例',
+    }
 
-    res = lexcial_analysis(pinyins)
-    if res:
-        res = parse_and_filter(model, res)
-        if res:
-            for P, list_of_pair in res:
-                print('%12.6f: %s' % (P, '|'.join(list_of_pair)))
-            print()
+    for k, v in testcases.items():
+        print(k)
 
+        #res = lexcial_analysis(k)
+        #if res:
+        #    res = parse_and_filter(model, res)
+        #    if res:
+        #        for P, list_of_pair in res:
+        #            print('%12.6f: %s' % (P, '|'.join(list_of_pair)))
+        #        print()
+
+        #lexcial2(k)
+        #print()
+
+        lexcial3(k)
+        print()
+
+        print()
 

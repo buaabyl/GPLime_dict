@@ -493,6 +493,74 @@ def lexcial3(s):
     print(l)
     print(l2)
 
+
+'''
+1. Build a multi-leaf tree
+2. Flat it to a list
+3. Sort by total chars length [desc].
+'''
+def lexcial_get_all_possible(s, depth=0):
+    if not s or s == '':
+        return None
+
+    if len(s) == 1:
+        return [(s, None)]
+
+    l = []
+
+    PINYINS = {}
+    max_pinyin_len = 0
+    for consonant, vowels in VALID_PAIRS.items():
+        for vowel in vowels:
+            if consonant == ' ':
+                consonant = ''
+            pinyin = consonant + vowel
+            PINYINS[pinyin] = (consonant, vowel)
+            if len(pinyin) > max_pinyin_len:
+                max_pinyin_len = len(pinyin)
+
+
+    if len(s) < max_pinyin_len:
+        max_pinyin_len = len(s)
+
+    while max_pinyin_len > 0:
+        substr = s[:max_pinyin_len]
+        if substr in PINYINS:
+            l.append((substr, lexcial_get_all_possible(s[max_pinyin_len:], depth+1)))
+        max_pinyin_len = max_pinyin_len - 1
+
+    if len(l) == 0:
+        prefix = s[0]
+        suffix = s[1:]
+
+        if prefix in PINYIN_CONSONANT:
+            res = lexcial_get_all_possible(suffix, depth+1)
+            if res:
+                l.append((prefix, res))
+            else:
+                l.append((s, None))
+        else:
+            return None
+
+    if len(l) == 0:
+        return None
+
+    return l
+
+def dump_possible_tree(res, prefix='  '):
+    if not res:
+        return
+    if isinstance(res, list):
+        for record in res:
+            dump_possible_tree(record, prefix)
+    elif isinstance(res, tuple):
+        msg = prefix + '+' + res[0]
+        print(msg)
+        dump_possible_tree(res[1], prefix + '| ' + ' ' * len(res[0]))
+    else:
+        print('???')
+
+
 if __name__ == '__main__':
     model = load_model('pinyin.unigram')
 
@@ -505,7 +573,7 @@ if __name__ == '__main__':
     }
 
     for k, v in testcases.items():
-        print(k)
+        print('STRING:', k)
 
         #res = lexcial_analysis(k)
         #if res:
@@ -518,8 +586,10 @@ if __name__ == '__main__':
         #lexcial2(k)
         #print()
 
-        lexcial3(k)
-        print()
+        #lexcial3(k)
+        #print()
 
+        res = lexcial_get_all_possible(k)
+        dump_possible_tree(res)
         print()
 

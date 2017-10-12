@@ -61,14 +61,13 @@ if __name__ == '__main__':
         for vowel in vowels:
             VALID_PAIRS_DICT["'".join([k, vowel])] = True
 
-    db = sqlite3.connect('ngram_chs.db')
+    db = sqlite3.connect('ngram_chs/ngram_chs.db')
     cur = db.cursor()
 
     m = {}
     valid_result = {}
     invalid_result = {}
 
-    #res = cur.execute('SELECT pinyin, freq FROM unigram LIMIT 1000')
     res = cur.execute('SELECT pinyin, freq FROM unigram')
     if res:
         rows = res.fetchall()

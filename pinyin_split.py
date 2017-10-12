@@ -260,7 +260,7 @@ def parse_and_filter(model, list_pinyins):
                 break
 
         if error:
-            print('    Warning: remove this candidate:', tokens)
+            #print('    Warning: remove this candidate:', tokens)
             continue
 
         P = 0
@@ -292,7 +292,7 @@ def create_pinyin_for_candidates(model, list_of_candidates):
 
 
 
-if __name__ == '__main__':
+def simple_verify():
     model = load_model('pinyin.unigram')
 
     l = [
@@ -348,5 +348,19 @@ if __name__ == '__main__':
         #print(s)
         #print(jstr)
         #print()
+
+if __name__ == '__main__':
+    model = load_model('pinyin.unigram')
+
+    pinyins    = 'zheshiyigejiandandeceshiyongli'
+    selections = '这 是 一个 简单的 测试 用例'
+
+    res = lexcial_analysis(pinyins)
+    if res:
+        res = parse_and_filter(model, res)
+        if res:
+            for P, list_of_pair in res:
+                print('%12.6f: %s' % (P, '|'.join(list_of_pair)))
+            print()
 
 

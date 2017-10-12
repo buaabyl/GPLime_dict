@@ -497,7 +497,6 @@ def lexcial3(s):
 '''
 1. Build a multi-leaf tree
 2. Flat it to a list
-3. Sort by total chars length [desc].
 '''
 def lexcial_get_all_possible(s, depth=0):
     if not s or s == '':
@@ -532,15 +531,16 @@ def lexcial_get_all_possible(s, depth=0):
     if len(l) == 0:
         prefix = s[0]
         suffix = s[1:]
-
         if prefix in PINYIN_CONSONANT:
             res = lexcial_get_all_possible(suffix, depth+1)
-            if res:
+            l.append((prefix, res))
+
+        if len(s) > 2:
+            prefix = s[0:2]
+            suffix = s[2:]
+            if prefix in PINYIN_CONSONANT:
+                res = lexcial_get_all_possible(suffix, depth+1)
                 l.append((prefix, res))
-            else:
-                l.append((s, None))
-        else:
-            return None
 
     if len(l) == 0:
         return None
@@ -567,9 +567,12 @@ if __name__ == '__main__':
     testcases = {
             "lian"                           : '连/李安',
             "liangen"                        : '恋歌/李安格',
-            "zhonghrmgongheg"                : '中华人民共和国',
+            "zheshiyigejiandandeceshiyongli" : '这 是 一个 简单的 测试 用例',
             "zhonghuarenmingongheguo"        : '中华人民共和国',
-            "zheshiyigejiandandeceshiyongli": '这 是 一个 简单的 测试 用例',
+            "zhonghrmgongheg"                : '中华人民共和国',
+            "zhhuarmgheguo"                   : '中华人民共和国',
+            "zhrmghg"                        : '中华人民共和国',
+            "zzifwijvvu"                     : ''
     }
 
     for k, v in testcases.items():

@@ -497,6 +497,7 @@ def lexcial3(s):
 '''
 1. Build a multi-leaf tree
 2. Flat it to a list
+3. Sort it by probability?
 '''
 def lexcial_get_all_possible(s, depth=0):
     if not s or s == '':

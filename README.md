@@ -10,6 +10,9 @@ Directory of dictionary for GPLime
 @ref https://yanyiwu.com/work/2015/06/14/jieba-series-performance-test.html \
 @ref http://www.52nlp.cn 
 
+
+需要找到一个好的方法处理模糊搜索，不太可能把sqlite3的index用到所有的组合上……
+
 ## 备忘
 
 首先调用 `bigdict_collections/preprocess.py` 和 `WORDS2PINYINS.cache` 两个文件。

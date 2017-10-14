@@ -549,6 +549,30 @@ def lexcial_get_all_possible(s, depth=0):
 
     return l
 
+
+def flat_possible_tree(res, depth=0):
+    l = []
+    if not res:
+        return None
+    if isinstance(res, list):
+        for record in res:
+            print(' ' * depth, 'list:')
+            sublist = flat_possible_tree(record, depth+1)
+            if not sublist:
+                continue
+            l.extend(sublist)
+        return l
+    elif isinstance(res, tuple):
+        print(' ' * depth, 'node: %s' % res[0])
+        sublist = flat_possible_tree(res[1], depth+1)
+        if not sublist:
+            return [res[0]]
+        for subrecord in sublist:
+            l.append(res[0]+ ',' + subrecord)
+        return l
+    else:
+        print('???')
+
 def dump_possible_tree(res, prefix='  '):
     if not res:
         return
@@ -568,13 +592,13 @@ if __name__ == '__main__':
 
     testcases = {
             "lian"                           : '连/李安',
-            "liangen"                        : '恋歌/李安格',
-            "zheshiyigejiandandeceshiyongli" : '这 是 一个 简单的 测试 用例',
-            "zhonghuarenmingongheguo"        : '中华人民共和国',
-            "zhonghrmgongheg"                : '中华人民共和国',
-            "zhhuarmgheguo"                   : '中华人民共和国',
-            "zhrmghg"                        : '中华人民共和国',
-            "zzifwijvvu"                     : ''
+            #"liangen"                        : '恋歌/李安格',
+            #"zheshiyigejiandandeceshiyongli" : '这 是 一个 简单的 测试 用例',
+            #"zhonghuarenmingongheguo"        : '中华人民共和国',
+            #"zhonghrmgongheg"                : '中华人民共和国',
+            #"zhhuarmgheguo"                   : '中华人民共和国',
+            #"zhrmghg"                        : '中华人民共和国',
+            #"zzifwijvvu"                     : ''
     }
 
     for k, v in testcases.items():
@@ -596,5 +620,9 @@ if __name__ == '__main__':
 
         res = lexcial_get_all_possible(k)
         dump_possible_tree(res)
+        print('-')
+        candidates = flat_possible_tree(res)
+        for candidate in candidates:
+            print('', candidates)
         print()
 

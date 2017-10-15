@@ -556,14 +556,12 @@ def flat_possible_tree(res, depth=0):
         return None
     if isinstance(res, list):
         for record in res:
-            print(' ' * depth, 'list:')
             sublist = flat_possible_tree(record, depth+1)
             if not sublist:
                 continue
             l.extend(sublist)
         return l
     elif isinstance(res, tuple):
-        print(' ' * depth, 'node: %s' % res[0])
         sublist = flat_possible_tree(res[1], depth+1)
         if not sublist:
             return [res[0]]
@@ -571,7 +569,8 @@ def flat_possible_tree(res, depth=0):
             l.append(res[0]+ ',' + subrecord)
         return l
     else:
-        print('???')
+        #this must not reach...
+        raise "Invalid format"
 
 def dump_possible_tree(res, prefix='  '):
     if not res:
@@ -592,14 +591,22 @@ if __name__ == '__main__':
 
     testcases = {
             "lian"                           : '连/李安',
-            #"liangen"                        : '恋歌/李安格',
-            #"zheshiyigejiandandeceshiyongli" : '这 是 一个 简单的 测试 用例',
-            #"zhonghuarenmingongheguo"        : '中华人民共和国',
-            #"zhonghrmgongheg"                : '中华人民共和国',
-            #"zhhuarmgheguo"                   : '中华人民共和国',
-            #"zhrmghg"                        : '中华人民共和国',
-            #"zzifwijvvu"                     : ''
+            "liangen"                        : '恋歌/李安格',
+            "zheshiyigejiandandeceshiyongli" : '这 是 一个 简单的 测试 用例',
+            "zhonghuarenmingongheguo"        : '中华人民共和国',
+            "zhonghrmgongheg"                : '中华人民共和国',
+            "zhhuarmgheguo"                   : '中华人民共和国',
+            "zhrmghg"                        : '中华人民共和国',
+            "zzifwijvvu"                     : ''
     }
+
+    PINYINS = {}
+    for consonant, vowels in VALID_PAIRS.items():
+        for vowel in vowels:
+            if consonant == ' ':
+                consonant = ''
+            pinyin = consonant + vowel
+            PINYINS[pinyin] = (consonant, vowel)
 
     for k, v in testcases.items():
         print('STRING:', k)
@@ -619,10 +626,21 @@ if __name__ == '__main__':
         #print()
 
         res = lexcial_get_all_possible(k)
-        dump_possible_tree(res)
-        print('-')
+        #dump_possible_tree(res)
+        print('res:')
         candidates = flat_possible_tree(res)
+        l = []
         for candidate in candidates:
-            print('', candidates)
+            rank = 0
+            for phrase in candidate:
+                if phrase in PINYINS:
+                    rank = rank + 5
+                else:
+                    rank = rank - 1
+            l.append((rank, candidate))
+
+        l.sort(key=lambda v:v[0], reverse=True)
+        for rank, candidate in l:
+            print(' %3d: %s' % (rank, candidate))
         print()
 

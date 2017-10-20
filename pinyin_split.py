@@ -27,147 +27,56 @@ import types
 import json
 import math
 
-PINYIN_CONSONANT = {
-    'b'   : 1,
-    'c'   : 2,
-    'ch'  : 3,
-    'd'   : 4,
-    'f'   : 5,
-    'g'   : 6,
-    'h'   : 7,
-    'j'   : 8,
-    'k'   : 9,
-    'l'   : 10,
-    'm'   : 11,
-    'n'   : 12,
-    'p'   : 13,
-    'q'   : 14,
-    'r'   : 15,
-    's'   : 16,
-    'sh'  : 17,
-    't'   : 18,
-    'w'   : 19,
-    'x'   : 20,
-    'y'   : 21,
-    'z'   : 22,
-    'zh'  : 23,
-}
-
-PINYIN_VOWEL = {
-    'a'   : 24,
-    'ai'  : 25,
-    'an'  : 26,
-    'ang' : 27,
-    'ao'  : 28,
-    'e'   : 29,
-    'ei'  : 30,
-    'en'  : 31,
-    'eng' : 32,
-    'er'  : 33,
-    'i'   : 34,
-    'ia'  : 35,
-    'ian' : 36,
-    'iang': 37,
-    'iao' : 38,
-    'ie'  : 39,
-    'in'  : 40,
-    'ing' : 41,
-    'iong': 42,
-    'iu'  : 43,
-    'o'   : 44,
-    'ong' : 45,
-    'ou'  : 46,
-    'u'   : 47,
-    'ua'  : 48,
-    'uai' : 49,
-    'uan' : 50,
-    'uang': 51,
-    'ue'  : 52,
-    'ui'  : 53,
-    'un'  : 54,
-    'uo'  : 55,
-    'v'   : 56,
-}
-
-VALID_PAIRS = {
-    " " :  ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "er", "o", "ou"],
-    "b" :  ["a", "ai", "an", "ang", "ao", "ei", "en", "eng", "i", "ian", "iao", "ie", "in", "ing", "o", "u"],
-    "p" :  ["a", "ai", "an", "ang", "ao", "ei", "en", "eng", "i", "ian", "iao", "ie", "in", "ing", "o", "ou", "u"],
-    "m" :  ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "i", "ian", "iao", "ie", "in", "ing", "iu", "o", "ou", "u"],
-    "f" :  ["a", "an", "ang", "ei", "en", "eng", "iao", "o", "ou", "u"],
-    "d" :  ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "i", "ia", "ian", "iao", "ie", "ing", "iu", "ong", "ou", "u", "uan", "ui", "un", "uo"],
-    "t" :  ["a", "ai", "an", "ang", "ao", "e", "ei", "eng", "i", "ian", "iao", "ie", "ing", "ong", "ou", "u", "uan", "ui", "un", "uo"],
-    "n" :  ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "i", "ian", "iang", "iao", "ie", "in", "ing", "iu", "ong", "ou", "u", "uan", "un", "uo", "v", "ue"],
-    "l" :  ["a", "ai", "an", "ang", "ao", "e", "ei", "eng", "i", "ia", "ian", "iang", "iao", "ie", "in", "ing", "iu", "o", "ong", "ou", "u", "uan", "un", "uo", "v", "ue"],
-    "g" :  ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "ong", "ou", "u", "ua", "uai", "uan", "uang", "ui", "un", "uo"],
-    "k" :  ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "ong", "ou", "u", "ua", "uai", "uan", "uang", "ui", "un", "uo"],
-    "h" :  ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "ong", "ou", "u", "ua", "uai", "uan", "uang", "ui", "un", "uo"],
-    "j" :  ["i", "ia", "ian", "iang", "iao", "ie", "in", "ing", "iong", "iu", "u", "uan", "ue", "un"],
-    "q" :  ["i", "ia", "ian", "iang", "iao", "ie", "in", "ing", "iong", "iu", "u", "uan", "ue", "un"],
-    "x" :  ["i", "ia", "ian", "iang", "iao", "ie", "in", "ing", "iong", "iu", "u", "uan", "ue", "un"],
-    "zh":  ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "i", "ong", "ou", "u", "ua", "uai", "uan", "uang", "ui", "un", "uo"],
-    "ch":  ["a", "ai", "an", "ang", "ao", "e", "en", "eng", "i", "ong", "ou", "u", "ua", "uai", "uan", "uang", "ui", "un", "uo"],
-    "sh":  ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "i", "ou", "u", "ua", "uai", "uan", "uang", "ui", "un", "uo"],
-    "r" :  ["an", "ang", "ao", "e", "en", "eng", "i", "ong", "ou", "u", "ua", "uan", "ui", "un", "uo"],
-    "z" :  ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "i", "ong", "ou", "u", "uan", "ui", "un", "uo"],
-    "c" :  ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "i", "ong", "ou", "u", "uan", "ui", "un", "uo"],
-    "s" :  ["a", "ai", "an", "ang", "ao", "e", "en", "eng", "i", "ong", "ou", "u", "uan", "ui", "un", "uo"],
-    "y" :  ["a", "an", "ang", "ao", "e", "i", "in", "ing", "o", "ong", "ou", "u", "uan", "ue", "un"],
-    "w" :  ["a", "ai", "an", "ang", "ei", "en", "eng", "o", "u"],
-}
-
-def load_model(fn):
-    valid_pinyin = {}
-    for k, vowels in VALID_PAIRS.items():
-        for vowel in vowels:
-            valid_pinyin[k + "'" + vowel] = (k, vowel)
-
-    f = open(fn)
-    m = json.loads(f.read())
+def load_model():
+    f = open('pinyin.json', 'r')
+    model = json.loads(f.read())
     f.close()
 
-    list_to_delete = []
+    f = open('pinyin.unigram')
+    unigram = json.loads(f.read())
+    f.close()
 
-    # check pinyin in unigram is valid pair
-    for k, freq in m.items():
-        if k not in valid_pinyin:
+    # verify pinyin unigram
+    list_to_delete = []
+    for k, freq in unigram.items():
+        if k not in model['lookup']:
+            print('missing', k)
             list_to_delete.append(k)
     for k in list_to_delete:
-        del m[k]
+        del unigram[k]
 
     # check all valid pair appear at least one time
-    for k in valid_pinyin:
-        if k not in m:
-            m[k] = 1
+    for k in model['lookup']:
+        if k not in unigram:
+            unigram[k] = 1
 
     # convert counter to probability
     total = 0
-    for k, freq in m.items():
+    for k, freq in unigram.items():
         total = total + freq
-    total = total + len(m)
+    total = total + len(unigram)
 
     # add 1 to every counter
-    model = {'': 0}
-    for k, freq in m.items():
+    probability = {'': 0}
+    for k, freq in unigram.items():
         p = (freq + 1) / total
         logp = -math.log(p)
-        model[k] = logp
+        probability[k] = logp
 
         newk = k.replace("'", '')
         newk = newk.replace(" ", '')
         if newk != k:
-            model[newk] = logp
+            probability[newk] = logp
+
+    model['probability'] = probability
+
+    f = open('pinyin.model', 'w')
+    f.write(json.dumps(model, indent=4))
+    f.close()
 
     return model
 
-
-'''
-1. Build a multi-leaf tree
-2. Flat it to a list
-3. Sort it by probability?
-4. Howto porting to c library.
-'''
-def lexcial_get_all_possible(s, depth=0):
+def lexcial_get_all_possible(s, model, depth=0):
     if not s or s == '':
         return None
 
@@ -176,39 +85,28 @@ def lexcial_get_all_possible(s, depth=0):
 
     l = []
 
-    PINYINS = {}
-    max_pinyin_len = 0
-    for consonant, vowels in VALID_PAIRS.items():
-        for vowel in vowels:
-            if consonant == ' ':
-                consonant = ''
-            pinyin = consonant + vowel
-            PINYINS[pinyin] = (consonant, vowel)
-            if len(pinyin) > max_pinyin_len:
-                max_pinyin_len = len(pinyin)
-
-
+    max_pinyin_len = model['max_pinyin_len']
     if len(s) < max_pinyin_len:
         max_pinyin_len = len(s)
 
     while max_pinyin_len > 0:
         substr = s[:max_pinyin_len]
-        if substr in PINYINS:
-            l.append((substr, lexcial_get_all_possible(s[max_pinyin_len:], depth+1)))
+        if substr in model['compact']:
+            l.append((substr, lexcial_get_all_possible(s[max_pinyin_len:], model, depth+1)))
         max_pinyin_len = max_pinyin_len - 1
 
     if len(l) == 0:
         prefix = s[0]
         suffix = s[1:]
-        if prefix in PINYIN_CONSONANT:
-            res = lexcial_get_all_possible(suffix, depth+1)
+        if prefix in model['consonant']:
+            res = lexcial_get_all_possible(suffix, model, depth+1)
             l.append((prefix, res))
 
         if len(s) > 2:
             prefix = s[0:2]
             suffix = s[2:]
-            if prefix in PINYIN_CONSONANT:
-                res = lexcial_get_all_possible(suffix, depth+1)
+            if prefix in model['consonant']:
+                res = lexcial_get_all_possible(suffix, model, depth+1)
                 l.append((prefix, res))
 
     if len(l) == 0:
@@ -253,30 +151,24 @@ def dump_possible_tree(res, prefix='  '):
         print('???')
 
 def sort_candidates(candidates, model):
-    PINYINS = {}
-    for consonant, vowels in VALID_PAIRS.items():
-        for vowel in vowels:
-            if consonant == ' ':
-                consonant = ''
-            pinyin = consonant + vowel
-            PINYINS[pinyin] = (consonant, vowel)
-
     l = []
+    probability_map = model['probability']
+
     for candidate in candidates:
         phrases = candidate.split(',')
         rank = 0
         for phrase in phrases:
-            if phrase in PINYINS:
+            if phrase in model['compact']:
                 rank = rank + 1
             else:
                 rank = rank - 1
 
         prob = 0
         for phrase in phrases:
-            if phrase in model:
-                prob = prob + model[phrase]
+            if phrase in probability_map:
+                prob = prob + probability_map[phrase]
             else:
-                prob = prob + model['']
+                prob = prob + probability_map['']
         prob_avg = prob / len(phrases)
 
         l.append((rank, prob_avg, candidate))
@@ -285,8 +177,9 @@ def sort_candidates(candidates, model):
 
     return l
 
+
 if __name__ == '__main__':
-    model = load_model('pinyin.unigram')
+    model = load_model()
 
     testcases = {
             "lian"                           : '连/李安',
@@ -294,7 +187,7 @@ if __name__ == '__main__':
             "zheshiyigejiandandeceshiyongli" : '这 是 一个 简单的 测试 用例',
             "zhonghuarenmingongheguo"        : '中华人民共和国',
             "zhonghrmgongheg"                : '中华人民共和国',
-            "zhhuarmgheguo"                   : '中华人民共和国',
+            "zhhuarmgheguo"                  : '中华人民共和国',
             "zhrmghg"                        : '中华人民共和国',
             "zzifwijvvu"                     : ''
     }
@@ -302,7 +195,7 @@ if __name__ == '__main__':
     for k, v in testcases.items():
         print('STRING:', k)
 
-        res = lexcial_get_all_possible(k)
+        res = lexcial_get_all_possible(k, model)
         #dump_possible_tree(res)
         print('res:')
         candidates = flat_possible_tree(res)
@@ -310,4 +203,6 @@ if __name__ == '__main__':
         for rank, prob, candidate in l:
             print(' %3d: %.3f, %s' % (rank, prob, candidate))
         print()
+
+
 

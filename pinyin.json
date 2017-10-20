@@ -1,5 +1,7 @@
 {
     "max_pinyin_len": 6,
+    "max_consonant_id": 23,
+    "max_vowel_id": 56,
     "consonant": {
         "b": 1,
         "c": 2,

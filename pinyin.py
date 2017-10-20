@@ -25,6 +25,8 @@ import re
 import getopt
 import glob
 import json 
+import operator
+from mako.template import Template
 
 PINYIN_CONSONANT = {
     'b'   : 1,
@@ -115,6 +117,132 @@ VALID_PAIRS = {
     "w" :  ["a", "ai", "an", "ang", "ei", "en", "eng", "o", "u"],
 }
 
+
+header = '''\
+/* vim: set fileencoding=utf-8:
+ * 
+ *                   GNU GENERAL PUBLIC LICENSE
+ *                       Version 2, June 1991
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; see the file COPYING.  If not, write to
+ * the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @author  buaabyl@gmail.com
+ * @ref sunpinyin
+ */
+#ifndef PINYIN_UTILS_H_F26EFD02_9BB5_5D72_A873_F6574E145C2A_INCLUDED_
+#define PINYIN_UTILS_H_F26EFD02_9BB5_5D72_A873_F6574E145C2A_INCLUDED_
+
+/*
+ * @retval -1   error
+ * @return      internal defined id for consonant and vowel
+ */
+int lime_str_to_id(const char* s);
+
+
+#endif
+
+'''
+
+
+tpl = '''\
+/* vim: set fileencoding=utf-8:
+ * 
+ *                   GNU GENERAL PUBLIC LICENSE
+ *                       Version 2, June 1991
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; see the file COPYING.  If not, write to
+ * the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * @author  buaabyl@gmail.com
+ * @ref sunpinyin
+ *
+ *  2012.10.01
+ *      I read sunpinyin source code, and design this library,
+ *      so the license must be GPL or LGPL
+ *      implement it in flex+bison
+ *
+ *  2017.04.16
+ *      rewrite by hand, remove flex and bison
+ *      optimize
+ *
+ *  2017.08.01
+ *      optimize
+ *
+ *  2017.10.20
+ *      rewrite
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+
+#include "pinyin_utils.h"
+
+#define LIME_MAX_PINYIN_LENGTH  ${model['max_pinyin_len']}
+#define LIME_MAX_CONSONANT_ID   ${model['max_consonant_id']}
+#define LIME_MAX_VOWEL_ID       ${model['max_vowel_id']}
+
+// it is not critical operation, NO NEED to using hash map!
+// JUST simple compare is enough.
+int lime_str_to_id(const char* s)
+{
+    const uint32_t LUT[] = {
+        // value        ID  original_string
+% for k, id_, v in str2id_list:
+        ${'0x%08x' % v},   //${'%2d' % id_}, ${k}
+% endfor
+    };
+    int i;
+    int n;
+    uint32_t v;
+
+    n = strlen(s);
+    if (n > 4) {
+        return -1;
+    }
+
+    v = 0;
+    for (i = 0;i < n;i++) {
+        v = (v << 8) | s[i];
+    }
+
+    for (i = 0;i < ${len(str2id_list) + 1};i++) {
+        if (LUT[i] == v) {
+            return i + 1;
+        }
+    }
+
+    return -1;
+}
+
+
+'''
+
+
+
 if __name__ == '__main__':
     PINYINS = {}
     for consonant, vowels in VALID_PAIRS.items():
@@ -122,7 +250,10 @@ if __name__ == '__main__':
             pinyin = consonant + "'" + vowel
             PINYINS[pinyin] = (consonant, vowel)
 
-    max_pinyin_len = 0
+    max_pinyin_len   = 0
+    max_consonant_id = 23
+    max_vowel_id     = 56
+
     PINYINS_COMPACT = {}
     for consonant, vowels in VALID_PAIRS.items():
         for vowel in vowels:
@@ -136,6 +267,8 @@ if __name__ == '__main__':
     f = open('pinyin.json', 'w')
     m = {
             'max_pinyin_len': max_pinyin_len,
+            'max_consonant_id': max_consonant_id,
+            'max_vowel_id': max_vowel_id,
             'consonant': PINYIN_CONSONANT,
             'vowel': PINYIN_VOWEL,
             'pair': VALID_PAIRS,
@@ -145,5 +278,30 @@ if __name__ == '__main__':
     f.write(json.dumps(m, indent=4))
     f.close()
     print('wrote to "pinyin.json"')
+
+    str2id_list = []
+    for k, id_ in sorted(PINYIN_CONSONANT.items(), key=operator.itemgetter(1)):
+        v = 0
+        for c in k:
+            v = (v << 8) | ord(c)
+        str2id_list.append((k, id_, v))
+
+    for k, id_ in sorted(PINYIN_VOWEL.items(), key=operator.itemgetter(1)):
+        v = 0
+        for c in k:
+            v = (v << 8) | ord(c)
+        str2id_list.append((k, id_, v))
+
+    f = open('pinyin_utils.h', 'w')
+    f.write(header)
+    f.close()
+    print('wrote to "pinyin_utils.h"')
+
+    h = Template(tpl)
+    d = h.render_unicode(model = m, str2id_list = str2id_list)
+    f = open('pinyin_utils.c', 'w')
+    f.write(d)
+    f.close()
+    print('wrote to "pinyin_utils.c"')
 
 

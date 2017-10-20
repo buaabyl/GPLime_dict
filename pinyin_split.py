@@ -157,341 +157,8 @@ def load_model(fn):
         newk = newk.replace(" ", '')
         if newk != k:
             model[newk] = logp
+
     return model
-
-def is_consonant(s):
-    if not s:
-        return False
-    return s in PINYIN_CONSONANT
-
-def is_vowel(s):
-    if not s:
-        return False
-    return s in PINYIN_VOWEL
-
-def is_independent_vowel(s):
-    if not s:
-        return False
-    return s in ["a", "ai", "an", "ang", "ao", "e", "ei", "en", "eng", "er", "o", "ou"]
-
-def is_valid_pair(consonant, vowel):
-    if consonant not in VALID_PAIRS:
-        return False
-    if vowel not in VALID_PAIRS[consonant]:
-        return False
-    return True 
-
-'''
-@breif      split input sequences to independent consonant and vowel
-@return     a list of possible pinyin pair, each consonant or vowel divided by "'"
-'''
-def lexcial_analysis(s, depth=0):
-    MAX_PINYIN = 6
-
-    # clean typo input like this: "'''"
-    if depth == 0:
-        s = re.sub(r"[']+", "'", s)
-
-    if s.startswith("'"):
-        s = s[1:]
-
-    l = []
-
-    n = len(s)
-    if n == 0:
-        return None
-    if n > MAX_PINYIN:
-        n = MAX_PINYIN
-    while n > 0:
-        k = s[:n]
-        if is_consonant(k) or is_vowel(k):
-            suffix = s[n:]
-            if len(suffix) == 0:
-                l.append(k)
-            else:
-                res = lexcial_analysis(suffix, depth+1)
-                if not res:
-                    return None
-                else:
-                    for item in res:
-                        l.append("%s|%s" % (k, item))
-        n = n - 1
-
-    return l
-
-
-def parse_and_filter(model, list_pinyins):
-    list_of_candidates = []
-
-    index = 0
-
-    for pinyins in list_pinyins:
-        tokens = pinyins.split("|")
-        tokens.append(None)
-
-        i = 0
-        n = len(tokens)
-        error = False
-        list_of_pair = []
-        while i < n-1:
-            k1 = tokens[i]
-            k2 = tokens[i+1]
-
-            # last token
-            if not k2:
-                if is_consonant(k1):
-                    list_of_pair.append("%s'" % (k1))
-                elif is_vowel(k1) and is_independent_vowel(k1):
-                    list_of_pair.append("'%s" % (k1))
-                else:
-                    error = True
-                break
-
-            if is_consonant(k1) and is_vowel(k2) and is_valid_pair(k1, k2):
-                list_of_pair.append("%s'%s" % (k1, k2))
-                i = i + 2
-            elif is_consonant(k1):
-                list_of_pair.append("%s'" % (k1))
-                i = i + 1
-            elif is_vowel(k1) and is_independent_vowel(k1):
-                list_of_pair.append(" '%s" % (k1))
-                i = i + 1
-            else:
-                error = True
-                break
-
-        if error:
-            #print('    Warning: remove this candidate:', tokens)
-            continue
-
-        P = 0
-        for pinyin in list_of_pair:
-            if pinyin in model:
-                P = P + model[pinyin]
-            else:
-                P = P + model['']
-
-        list_of_candidates.append((P, list_of_pair))
-        
-        index = index + 1
-
-    list_of_candidates.sort(key=lambda v:v[0])
-
-    return list_of_candidates
-
-def create_pinyin_for_candidates(model, list_of_candidates):
-    for P, list_of_pair in res:
-        l = []
-        for pinyin in list_of_pair:
-            consonant, vowel = pinyin.split("'")
-            if consonant and vowel:
-                continue
-            if consonant:
-                print('  [' + pinyin + '] to find vowel')
-            else:
-                print('  [' + pinyin + '] to find consonant')
-
-
-
-def simple_verify():
-    model = load_model('pinyin.unigram')
-
-    l = [
-        "lian",     # li'an, lian
-        "livn",     # typo
-        #"li'an",    # li'an
-        #"liang",    # li'ang, liang, li'an'g
-        #"li'ang",
-        #"lii",      #typo
-        #"liyi",     #typo
-        #"li3",      #typo
-        #"ceshiyixia",
-        #"chesiyixia",
-        #"zhonghuarmghguo",
-    ]
-
-    for s in l:
-        print('-' * 80)
-        print('input:', s)
-        res = lexcial_analysis(s)
-        if not res:
-            print('    Lexcial error')
-            print()
-            continue
-        print('lexcial: %d' % len(res))
-        i = 0
-        for item in res:
-            print('    %2d: %s' % (i, item))
-            i = i + 1
-
-
-
-        print('parse:')
-        res = parse_and_filter(model, res)
-        if not res:
-            print('    Parser error')
-            print()
-            continue
-        for P, list_of_pair in res:
-            print('%12.6f: %s' % (P, '|'.join(list_of_pair)))
-        print()
-
-
-
-        print('fill:')
-        res = create_pinyin_for_candidates(model, res)
-        print()
-
-
-        #res.sort(key=lambda v:len(v.split("'")))
-
-        #jstr = json.dumps(res, indent=4)
-        #print(s)
-        #print(jstr)
-        #print()
-
-def lexcial2(s):
-    PINYINS = {}
-    PINYINS_NO_CONSONANT = VALID_PAIRS[' ']
-
-    CONFUSION = {}
-    for vowel in PINYIN_VOWEL:
-        last_char = vowel[-1]
-        for consonant in PINYIN_CONSONANT:
-            if consonant.startswith(last_char):
-                prefix = vowel[:-1]
-                if prefix in PINYIN_VOWEL:
-                    CONFUSION[vowel] = (prefix, consonant)
-
-    max_pinyin_len = 0
-    for consonant, vowels in VALID_PAIRS.items():
-        if consonant == ' ':
-            continue
-        for vowel in vowels:
-            pinyin = consonant + vowel
-            PINYINS[pinyin] = (consonant, vowel)
-            if len(pinyin) > max_pinyin_len:
-                max_pinyin_len = len(pinyin)
-
-    # user input `'` means seperate word, not between consonant and vowel!
-    first_split_list = s.split("'")
-    l = []
-    for s in first_split_list:
-        offs = 0
-        n = len(s)
-        current_l = []
-        while offs < n:
-            sublen = max_pinyin_len
-            while sublen > 0:
-                substr = s[offs:offs+sublen]
-                if substr in PINYINS:
-                    break
-                sublen = sublen - 1
-
-            if sublen > 0:
-                k, v = PINYINS[substr]
-                if v in CONFUSION:
-                    confusion = CONFUSION[v]
-                    current_l.append((substr, (k + confusion[0], confusion[1])))
-                else:
-                    current_l.append(substr)
-                offs = offs + sublen
-            else:
-                current_l.append(s[offs])
-                offs = offs + 1
-
-
-        print(current_l)
-        words = []
-        index = 0
-        n = len(current_l)
-        while index < n:
-            token = current_l[index]
-            if not isinstance(token, tuple):
-                index = index + 1
-                l.append(token)
-                continue
-
-            if index == n - 1:
-                l.append(token[0])
-                break
-
-            # TODO: how to deal with next token is tuple?
-            next_token = current_l[index+1]
-            if isinstance(next_token, tuple):
-                index = index + 1
-                l.append(token[0])
-                continue
-
-            longest_str             = token[0]
-            confusion_valid_str     = token[1][0]
-            confusion_isolated_con  = token[1][1]
-
-            if confusion_isolated_con in VALID_PAIRS:
-                if next_token in VALID_PAIRS[confusion_isolated_con]:
-                    l.append(confusion_valid_str)
-                    l.append(confusion_isolated_con + next_token)
-                    index = index + 2
-                    continue
-
-            l.append(longest_str)
-
-            index = index + 1
-            
-    print(l)
-
-def lexcial3(s):
-    PINYINS = {}
-    max_pinyin_len = 0
-    for consonant, vowels in VALID_PAIRS.items():
-        if consonant == ' ':
-            continue
-        for vowel in vowels:
-            pinyin = consonant + vowel
-            PINYINS[pinyin] = (consonant, vowel)
-            if len(pinyin) > max_pinyin_len:
-                max_pinyin_len = len(pinyin)
-
-    # positive search
-    offs = 0
-    n = len(s)
-    l = []
-    while offs < n:
-        sublen = max_pinyin_len
-        while sublen > 0:
-            substr = s[offs:offs+sublen]
-            if substr in PINYINS:
-                break
-            sublen = sublen - 1
-
-        if sublen > 0:
-            l.append(substr)
-            offs = offs + sublen
-        else:
-            l.append(s[offs])
-            offs = offs + 1
-
-    # reverse search
-    offs = n - 1 
-    l2 = []
-    while 0 < offs:
-        sublen = max_pinyin_len
-        while sublen > 0:
-            substr = s[offs-sublen+1:offs+1]
-            if substr in PINYINS:
-                break
-            sublen = sublen - 1
-
-        if sublen > 0:
-            l2.insert(0, substr)
-            offs = offs - sublen
-        else:
-            l2.insert(0, s[offs])
-            offs = offs - 1
-
-
-    print(l)
-    print(l2)
 
 
 '''
@@ -585,21 +252,7 @@ def dump_possible_tree(res, prefix='  '):
     else:
         print('???')
 
-
-if __name__ == '__main__':
-    model = load_model('pinyin.unigram')
-
-    testcases = {
-            "lian"                           : '连/李安',
-            #"liangen"                        : '恋歌/李安格',
-            #"zheshiyigejiandandeceshiyongli" : '这 是 一个 简单的 测试 用例',
-            #"zhonghuarenmingongheguo"        : '中华人民共和国',
-            #"zhonghrmgongheg"                : '中华人民共和国',
-            #"zhhuarmgheguo"                   : '中华人民共和国',
-            #"zhrmghg"                        : '中华人民共和国',
-            #"zzifwijvvu"                     : ''
-    }
-
+def sort_candidates(candidates, model):
     PINYINS = {}
     for consonant, vowels in VALID_PAIRS.items():
         for vowel in vowels:
@@ -608,41 +261,53 @@ if __name__ == '__main__':
             pinyin = consonant + vowel
             PINYINS[pinyin] = (consonant, vowel)
 
+    l = []
+    for candidate in candidates:
+        phrases = candidate.split(',')
+        rank = 0
+        for phrase in phrases:
+            if phrase in PINYINS:
+                rank = rank + 1
+            else:
+                rank = rank - 1
+
+        prob = 0
+        for phrase in phrases:
+            if phrase in model:
+                prob = prob + model[phrase]
+            else:
+                prob = prob + model['']
+        prob_avg = prob / len(phrases)
+
+        l.append((rank, prob_avg, candidate))
+
+    l.sort(key=lambda v:1000 * v[0] + v[1], reverse=True)
+
+    return l
+
+if __name__ == '__main__':
+    model = load_model('pinyin.unigram')
+
+    testcases = {
+            "lian"                           : '连/李安',
+            "liangen"                        : '恋歌/李安格',
+            "zheshiyigejiandandeceshiyongli" : '这 是 一个 简单的 测试 用例',
+            "zhonghuarenmingongheguo"        : '中华人民共和国',
+            "zhonghrmgongheg"                : '中华人民共和国',
+            "zhhuarmgheguo"                   : '中华人民共和国',
+            "zhrmghg"                        : '中华人民共和国',
+            "zzifwijvvu"                     : ''
+    }
+
     for k, v in testcases.items():
         print('STRING:', k)
-
-        #res = lexcial_analysis(k)
-        #if res:
-        #    res = parse_and_filter(model, res)
-        #    if res:
-        #        for P, list_of_pair in res:
-        #            print('%12.6f: %s' % (P, '|'.join(list_of_pair)))
-        #        print()
-
-        #lexcial2(k)
-        #print()
-
-        #lexcial3(k)
-        #print()
 
         res = lexcial_get_all_possible(k)
         #dump_possible_tree(res)
         print('res:')
         candidates = flat_possible_tree(res)
-        l = []
-        for candidate in candidates:
-            phrases = candidate.split(',')
-            rank = 0
-            for phrase in phrases:
-                if phrase in PINYINS:
-                    rank = rank + 1
-                else:
-                    rank = rank - 1
-
-            l.append((rank, candidate))
-
-        l.sort(key=lambda v:v[0], reverse=True)
-        for rank, candidate in l:
-            print(' %3d: %s' % (rank, candidate))
+        l = sort_candidates(candidates, model)
+        for rank, prob, candidate in l:
+            print(' %3d: %.3f, %s' % (rank, prob, candidate))
         print()
 

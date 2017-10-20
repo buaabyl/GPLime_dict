@@ -13,6 +13,9 @@ Directory of dictionary for GPLime
 
 需要找到一个好的方法处理模糊搜索，不太可能把sqlite3的index用到所有的组合上……
 
+将声母提取出来一次搜索，然后再二次搜索？
+
+
 ## 备忘
 
 首先调用 `bigdict_collections/preprocess.py` 和 `WORDS2PINYINS.cache` 两个文件。

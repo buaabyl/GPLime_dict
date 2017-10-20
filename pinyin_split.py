@@ -591,13 +591,13 @@ if __name__ == '__main__':
 
     testcases = {
             "lian"                           : '连/李安',
-            "liangen"                        : '恋歌/李安格',
-            "zheshiyigejiandandeceshiyongli" : '这 是 一个 简单的 测试 用例',
-            "zhonghuarenmingongheguo"        : '中华人民共和国',
-            "zhonghrmgongheg"                : '中华人民共和国',
-            "zhhuarmgheguo"                   : '中华人民共和国',
-            "zhrmghg"                        : '中华人民共和国',
-            "zzifwijvvu"                     : ''
+            #"liangen"                        : '恋歌/李安格',
+            #"zheshiyigejiandandeceshiyongli" : '这 是 一个 简单的 测试 用例',
+            #"zhonghuarenmingongheguo"        : '中华人民共和国',
+            #"zhonghrmgongheg"                : '中华人民共和国',
+            #"zhhuarmgheguo"                   : '中华人民共和国',
+            #"zhrmghg"                        : '中华人民共和国',
+            #"zzifwijvvu"                     : ''
     }
 
     PINYINS = {}
@@ -631,12 +631,14 @@ if __name__ == '__main__':
         candidates = flat_possible_tree(res)
         l = []
         for candidate in candidates:
+            phrases = candidate.split(',')
             rank = 0
-            for phrase in candidate:
+            for phrase in phrases:
                 if phrase in PINYINS:
-                    rank = rank + 5
+                    rank = rank + 1
                 else:
                     rank = rank - 1
+
             l.append((rank, candidate))
 
         l.sort(key=lambda v:v[0], reverse=True)

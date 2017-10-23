@@ -16,6 +16,11 @@ Directory of dictionary for GPLime
 将声母提取出来一次搜索，然后再二次搜索？
 
 
+## TODO
+- 移植lime的词搜索
+- 快速匹配
+
+
 ## 备忘
 
 首先调用 `bigdict_collections/preprocess.py` 和 `WORDS2PINYINS.cache` 两个文件。

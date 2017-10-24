@@ -57,7 +57,7 @@ def load_model():
     total = total + len(unigram)
 
     # add 1 to every counter
-    probability = {'': 0}
+    probability = {'': -math.log(1 / total)}
     for k, freq in unigram.items():
         p = (freq + 1) / total
         logp = -math.log(p)
@@ -173,7 +173,7 @@ def sort_candidates(candidates, model):
 
         l.append((rank, prob_avg, candidate))
 
-    l.sort(key=lambda v:1000 * v[0] + v[1], reverse=True)
+    l.sort(key=lambda v:1000 * v[0] - v[1], reverse=True)
 
     return l
 

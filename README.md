@@ -19,6 +19,7 @@ Directory of dictionary for GPLime
 ## TODO
 - 移植lime的词搜索
 - 快速匹配
+- 基于pime做一个demo
 
 
 ## 备忘
